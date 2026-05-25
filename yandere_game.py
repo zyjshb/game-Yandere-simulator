@@ -28,6 +28,10 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from visual_fx import (
+    ProceduralFX, ParticleEngine, OverlayManager, get_widget_size
+)
+
 # 尝试导入可选的第三方库，若缺失则优雅降级
 try:
     import pygame
@@ -1058,15 +1062,22 @@ class YandereGameApp:
         # 敏感词集合（触发心电图狂暴闪红与窗口狂震）
         self.danger_words = ["死", "杀", "背叛", "离开", "谁", "别的人", "小黑屋", "逃", "小刀", "滚", "锁", "洗澡", "地下室", "老子"]
         
+        # 程序化视觉特效引擎
+        self.overlay_mgr = OverlayManager(self.root)
+        self._particle_engine = None  # deferred until canvas exists
+        self._border_pulse_active = False
+
         # 线程安全队列轮询
         self.root.after(20, self._process_ui_queue)
-        
+
         # 初始化 UI & 声音
         self._init_styles()
         self._build_ui()
         self._start_ecg_animation()
         self._init_and_play_audio()
         self._start_crt_flicker_loop()
+        self._start_particle_engine()
+        self._start_border_pulse_loop()
         
         # 启动时自动清理历史残留临时音频，保持文件夹整洁
         self._clean_orphaned_temp_files()
@@ -2504,7 +2515,10 @@ class YandereGameApp:
 
         if hasattr(self, 'overlay') and self.overlay.winfo_exists():
             self.overlay.destroy()
-            
+
+        # 清理程序化特效叠加层
+        self.overlay_mgr.hide()
+
         # 重置所有心理恐怖状态
         self.mouse_pull_active = False
         self.meltdown_active = False
@@ -2566,7 +2580,10 @@ class YandereGameApp:
         self.chat_text.config(state=tk.DISABLED)
         
         self._set_typing_state(False)
-        
+
+        # 重启程序化视觉特效循环
+        self._start_border_pulse_loop()
+
         restart_cycle = self.cycle_id
         self.root.after(
             500,
@@ -2921,14 +2938,14 @@ class YandereGameApp:
             self.glitch_font_shake_active = False
             return
             
-        # 收集所有的特效方法列表 (1 到 21)
+        # 收集所有的特效方法列表 (1 到 30)
         all_glitches = [
-            (1, lambda: setattr(self, 'glitch_font_shake_active', True)), # 激活字号抖动
-            (2, self._shake_chat_widget), # 激活聊天区域剧烈震颤动画
+            (1, lambda: setattr(self, 'glitch_font_shake_active', True)),
+            (2, self._shake_chat_widget),
             (3, self._glitch_ghost_text),
             (4, self._glitch_evaporate),
             (5, self._glitch_speed_shift),
-            (6, self._glitch_blood_pulse), # 呼吸大闪屏
+            (6, self._glitch_blood_pulse),
             (7, self._glitch_invert_colors),
             (8, self._glitch_widget_melt),
             (9, self._glitch_heavy_earthquake),
@@ -2939,23 +2956,36 @@ class YandereGameApp:
             (14, self._glitch_scanlines),
             (15, self._glitch_snow_noise),
             (16, self._glitch_subliminal_popup),
-            (17, self._shake_chat_widget), # 去除易误解的模拟报错，升级为聊天框疯狂震颤
+            (17, self._shake_chat_widget),
             (18, self._glitch_mouse_attract),
             (19, self._glitch_suffocation),
             (20, self._glitch_dialogue_overlap),
             (21, self._glitch_day_loop),
+            # --- new procedural-Pillow effects (22-30) ---
+            (22, self._glitch_blood_overlay),
+            (23, self._glitch_vignette_squeeze),
+            (24, self._glitch_scanline_crt),
+            (25, self._glitch_static_burst),
+            (26, self._glitch_chromatic_tear),
+            (27, self._glitch_blood_drips),
+            (28, self._glitch_scream_radial),
+            (29, self._glitch_dungeon_grid),
+            (30, self._glitch_corruption_blocks),
         ]
         
         if level == 1:
-            # 焦虑期：从 【1-5】、【12-15】 中抽取 1-2 种特效轻微闪现
-            candidates = [g for g in all_glitches if g[0] in [1, 2, 3, 4, 5, 12, 13, 14, 15]]
-            to_trigger = random.sample(candidates, k=random.randint(1, 2))
+            # 焦虑期：从轻量特效池中抽取 1-3 种
+            candidates = [g for g in all_glitches if g[0] in [
+                1, 2, 3, 4, 5, 12, 13, 14, 15,
+                23, 24, 25, 26, 29,  # mild procedural overlays
+            ]]
+            to_trigger = random.sample(candidates, k=random.randint(1, 3))
             for item in to_trigger:
                 try: item[1]()
                 except Exception as e: print(f"[Glitch Error] {e}")
         elif level == 2:
-            # 狂暴期：全部解锁，随机组合 4-6 种特效爆发！
-            to_trigger = random.sample(all_glitches, k=random.randint(4, 6))
+            # 狂暴期：全部 30 种解锁，随机组合 5-8 种特效爆发
+            to_trigger = random.sample(all_glitches, k=random.randint(5, 8))
             for item in to_trigger:
                 try: item[1]()
                 except Exception as e: print(f"[Glitch Error] {e}")
@@ -3235,31 +3265,115 @@ class YandereGameApp:
             self.root.after(50, lambda: shift(count + 1))
         shift()
 
+    # --- new procedural-Pillow glitch effects (22-30) ---
+
+    def _glitch_blood_overlay(self):
+        w, h = get_widget_size(self.root)
+        intensity = 0.3 + 0.7 * (self.suspicion / 100.0)
+        img = ProceduralFX.blood_splatter(w, h, drops=int(30 + intensity * 50), intensity=intensity)
+        self.overlay_mgr.show(img, duration_ms=random.randint(300, 800))
+
+    def _glitch_vignette_squeeze(self):
+        w, h = get_widget_size(self.root)
+        darkness = 0.35 + 0.45 * (self.suspicion / 100.0)
+        img = ProceduralFX.vignette(w, h, darkness=darkness)
+        self.overlay_mgr.show(img, duration_ms=random.randint(600, 1500))
+
+    def _glitch_scanline_crt(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.scanlines(w, h, spacing=random.choice([2, 3, 4]), opacity=0.12)
+        self.overlay_mgr.show(img, duration_ms=random.randint(80, 250))
+
+    def _glitch_static_burst(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.static_noise(w, h, intensity=0.2 + random.uniform(0, 0.3))
+        self.overlay_mgr.show(img, duration_ms=random.randint(60, 200))
+
+    def _glitch_chromatic_tear(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.chromatic_aberration(w, h, shift=random.randint(3, 10))
+        self.overlay_mgr.show(img, duration_ms=random.randint(100, 400))
+
+    def _glitch_blood_drips(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.blood_drip_streak(w, h, count=random.randint(3, 10))
+        self.overlay_mgr.show(img, duration_ms=random.randint(400, 1200))
+
+    def _glitch_scream_radial(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.scream_lines(w, h, count=random.randint(15, 40))
+        self.overlay_mgr.show(img, duration_ms=random.randint(200, 600))
+
+    def _glitch_dungeon_grid(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.cell_shade(w, h, grid=random.choice([30, 50, 80]))
+        self.overlay_mgr.show(img, duration_ms=random.randint(300, 900))
+
+    def _glitch_corruption_blocks(self):
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.glitch_block(w, h, blocks=random.randint(4, 15))
+        self.overlay_mgr.show(img, duration_ms=random.randint(100, 500))
+
+    # ---- procedural visual FX integration ----
+
+    def _start_particle_engine(self):
+        if self._particle_engine is not None:
+            return
+        self._particle_engine = ParticleEngine(self.canvas_ecg, count=30)
+        self._particle_engine.start()
+
+    def _stop_particle_engine(self):
+        if self._particle_engine is not None:
+            self._particle_engine.stop()
+            self._particle_engine = None
+
+    def _start_border_pulse_loop(self):
+        def pulse():
+            if self.game_over:
+                return
+            susp = self.suspicion
+            if susp >= 50:
+                pulse_val = 0.3 + 0.7 * (susp - 50) / 50.0
+                phase = math.sin(time.time() * 3.0) * 0.5 + 0.5
+                intensity = pulse_val * phase
+                w, h = get_widget_size(self.root)
+                img = ProceduralFX.flesh_pulse_frame(w, h, pulse=intensity)
+                self.overlay_mgr.show(img, duration_ms=120)
+            self.root.after(600 if susp < 50 else 200, pulse)
+        pulse()
+
+    def _afterimage_shake_overlay(self, duration_ms=200):
+        """Brief chromatic-aberration + scream-lines overlay during shakes."""
+        w, h = get_widget_size(self.root)
+        img = ProceduralFX.chromatic_aberration(w, h, shift=random.randint(3, 8))
+        self.overlay_mgr.show(img, duration_ms=duration_ms)
+
     def _start_physical_shake(self, range_px=12):
         if self.shaking:
             return
-            
+
         self.shaking = True
-        
+        self._afterimage_shake_overlay(duration_ms=300)
+
         def shake_worker():
             try:
                 orig_x = self.root.winfo_x()
                 orig_y = self.root.winfo_y()
-                
+
                 steps = 22
                 for _ in range(steps):
-                    dx = random.randint(-12, 12)
-                    dy = random.randint(-12, 12)
-                    
+                    dx = random.randint(-range_px, range_px)
+                    dy = random.randint(-range_px, range_px)
+
                     self._queue_ui("TRIGGER_MOVE", (orig_x + dx, orig_y + dy))
                     time.sleep(0.025)
-                    
+
                 self._queue_ui("TRIGGER_MOVE", (orig_x, orig_y))
             except Exception as e:
                 print(f"[震动异常] {e}")
             finally:
                 self.shaking = False
-                
+
         thread_shake = threading.Thread(target=shake_worker, daemon=True)
         thread_shake.start()
 
