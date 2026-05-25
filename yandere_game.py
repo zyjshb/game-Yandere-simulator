@@ -510,6 +510,18 @@ def _is_negated(text, keyword):
             return True
     return False
 
+def _has_defiance_signal(text):
+    """检测文本是否含有反抗/拒绝信号（危险词出现在拒绝语境中）。"""
+    patterns = (
+        "不吃", "不要", "不会", "不行", "不服", "不干", "不做", "不听",
+        "就算", "休想", "别想", "打死我", "逼我", "强迫", "绝不",
+        "打死", "弄死", "掐死", "砍死",
+    )
+    for p in patterns:
+        if p in text:
+            return True
+    return False
+
 def classify_player_intent(user_input):
     lowered = (user_input or "").lower()
     # 先收集所有命中，再做否定过滤，避免负向情感被正向规则抢先匹配
@@ -528,6 +540,12 @@ def classify_player_intent(user_input):
             for rule, _ in matches:
                 if rule["name"] == name:
                     return rule
+        # danger_talk / morbidity_bond 遇上反抗语境 → 视为 destructive_attack
+        for rule, _ in matches:
+            if rule["name"] in ("danger_talk", "morbidity_bond") and _has_defiance_signal(lowered):
+                for r in INTENT_RULES:
+                    if r["name"] == "destructive_attack":
+                        return r
         return matches[0][0]
     return INTENT_RULES[-1]
 
