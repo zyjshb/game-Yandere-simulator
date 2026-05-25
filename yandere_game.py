@@ -479,13 +479,54 @@ def same_language(lang_a, lang_b):
             return True
     return normalize_language(lang_a) == normalize_language(lang_b)
 
+def _negation_prefixes():
+    return (
+        # 中文否定词
+        "不", "没", "别", "莫", "休", "未", "非", "勿", "无",
+        # 英文否定词（带尾部空格以便匹配 "don't " "not " 等）
+        "not ", "don't ", "dont ", "do not ", "never ", "no ",
+        # 日文否定
+        "じゃない", "ではない", "じゃねえ", "ない", "ません", "ぬ",
+        "じゃなく", "ではなく",
+    )
+
+def _is_negated(text, keyword):
+    """Check if *keyword* is negated in *text* (e.g. 不喜欢, don't like, 好きじゃない)."""
+    idx = text.find(keyword)
+    if idx == -1:
+        return False
+    before = text[max(0, idx - 8):idx].rstrip()
+    if not before:
+        return False
+    # 单字否定词：只要出现在 keyword 前 8 字符窗口内即视为否定
+    _single_neg = ("不", "没", "别", "莫", "勿", "未", "非", "无")
+    for ch in _single_neg:
+        if ch in before:
+            return True
+    for neg in _negation_prefixes():
+        if before.endswith(neg) or before.startswith(neg):
+            return True
+    return False
+
 def classify_player_intent(user_input):
     lowered = (user_input or "").lower()
+    # 先收集所有命中，再做否定过滤，避免负向情感被正向规则抢先匹配
+    matches = []
     for rule in INTENT_RULES:
         if rule["name"] == "default":
             continue
-        if any(keyword in lowered for keyword in rule["keywords"]):
-            return rule
+        for kw in rule["keywords"]:
+            if kw in lowered and not _is_negated(lowered, kw):
+                matches.append((rule, kw))
+                break
+    if matches:
+        # 优先返回负向规则 (extreme_rejection, destructive_attack, betrayal_mockery)
+        negative_priority = ("extreme_rejection", "destructive_attack", "betrayal_mockery")
+        for name in negative_priority:
+            for rule, _ in matches:
+                if rule["name"] == name:
+                    return rule
+        return matches[0][0]
     return INTENT_RULES[-1]
 
 def roll_delta_for_intent(rule):
