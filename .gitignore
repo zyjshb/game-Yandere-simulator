@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+.claude/
+yandere_config.json
+temp_saki_*.wav
+*.ckpt
+*.pth
