@@ -109,7 +109,7 @@ def clean_text_for_tts(text):
         text = re.sub(r'\*[^*]*\*', '', text)
     
     # 仅保留中英文字符、数字和常用中文标点，移除非文字表情符号
-    text = re.sub(r'[^\w\s\u4e00-\u9fa5，。！？、…；：“”‘’\-]', '', text)
+    text = re.sub(r'[^\w\s\u4e00-\u9fa5，。！？、…；：""‘’\-]', '', text)
     
     # 【自愈优化】如果清洗后的文本不包含任何汉字、日文字符、英文字母或数字，则直接视为空，不发起语音合成以避免 400 Bad Request 错误
     if not re.search(r'[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ffa-zA-Z0-9]', text):
@@ -180,7 +180,7 @@ LANGUAGE_PROFILES = {
         "translation_rule": (
             "玩家正在使用【{user_lang}】。正式回复必须先用简体中文完成；"
             "然后必须在 JSON 之前另起一行，用一对全角括号 `（ ）` 放入完整的【{user_lang}】译文。"
-            "这是强制可读性协议，不是可选项。不要添加“翻译:”或“Translation:”前缀。"
+            "这是强制可读性协议，不是可选项。不要添加\"翻译:\"或\"Translation:\"前缀。"
         ),
         "reply_limit": "正式台词控制在 80 到 140 个中文字符，除非正在触发结局。",
         "fallback_suffix": "||{{\"favorability\": {delta_f}, \"suspicion\": {delta_s}, \"escape_rate\": {delta_e}, \"game_over\": false}}||",
@@ -243,7 +243,7 @@ INTENT_RULES = [
     {
         "name": "extreme_rejection",
         "keywords": ("滚", "老子", "赶紧滚"),
-        "delta": (-55, -55, 60, 60, -15, -15),
+        "delta": (-25, -15, 40, 55, -10, -5),
         "prompt": "粗暴羞辱或极端拒绝：强烈受伤，语气冷下来，疑心暴涨，台词短而压抑。",
     },
     {
@@ -660,12 +660,14 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
     selected_lang = normalize_language(selected_lang)
     profile = LANGUAGE_PROFILES[selected_lang]
     needs_translation = translation_required(selected_lang, user_lang)
-    translation_contract = (
-        f"当前需要双语输出：是。纱希正文使用【{profile['formal_name']}】，"
-        f"紧接着用一行全角括号译成玩家输入语言【{user_lang}】。译文必须放在 JSON 前。"
-        if needs_translation
-        else "当前需要双语输出：否。玩家输入语言与纱希语言一致，不要额外添加括号译文。"
-    )
+    if needs_translation:
+        translation_contract = (
+            f"当前需要双语输出：是。纱希正文使用【{profile['formal_name']}】，"
+            f"紧接着用一行全角括号译成玩家输入语言【{user_lang}】。译文必须放在 JSON 前。"
+        )
+    else:
+        translation_contract = "当前需要双语输出：否。玩家输入语言与纱希语言一致，不要额外添加括号译文。"
+
     return (
         "【角色模拟系统 v2.0】\n"
         f"{ROLE_SIMULATION_STANDARD['identity']}\n"
@@ -687,7 +689,7 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
         "【输出结构】\n"
         "1. 每次回复必须包含且只包含一个 `<think>...</think>`。think 内写纱希的内心判断，不要写模型推理过程。\n"
         "2. `<think>` 之后写对玩家说出口的正式台词。台词要像角色在现场说话，不要像系统说明。\n"
-        "3. 如果双语显示合约为“是”，正式台词后必须另起一行写一段括号译文，且只翻译正式台词和动作描写，不翻译 `<think>` 内容。\n"
+        "3. 如果双语显示合约为\"是\"，正式台词后必须另起一行写一段括号译文，且只翻译正式台词和动作描写，不翻译 `<think>` 内容。\n"
         "4. 最末尾必须追加机器可解析 JSON，格式严格为：\n"
         "   ||{\"favorability\": int, \"suspicion\": int, \"escape_rate\": int, \"game_over\": false}||\n"
         "5. 如果确实到达结局高潮，才允许将 game_over 设为 true，并同时给出 ending_type、ending_title、ending_story。\n"
@@ -747,35 +749,30 @@ LOCALIZATION = {
         "voice_conn_fail": "连接失败",
         "endings": {
             "bad": {
-                "title": "BAD END: 永远的标本",
+                "title": "BAD END",
                 "story": (
-                    "纱希发现了你在试图逃离她的蛛丝马迹……\n"
-                    "她的双眼闪烁起疯狂而绝望的暗黑色火焰。\n\n"
-                    "“阿纳达……你为什么要跑？是我做得还不够好吗？为什么要背叛我？！”\n"
-                    "“没关系……既然活着你总想着离开，那就把你永远地做成防腐标本吧……”\n"
-                    "“这样，你冰冷而美丽的眼睛，就只能永远、永远看着我一个人了……嘻嘻……❤”\n\n"
-                    "你失去了知觉。一剂冰冷的防腐药水被打入脖颈。你的余生被永远定格在了福尔马林中，与她永恒长眠。"
+                    "纱希不会再让你离开了。\n"
+                    "你的手脚被牢牢固定，冰冷的锁链嵌进皮肤。\n"
+                    "从此以后，你的世界只剩下她的眼睛。\n"
+                    "永远。永远。永远。"
                 )
             },
             "good": {
-                "title": "GOOD END: 救赎的晨曦",
+                "title": "GOOD END",
                 "story": (
-                    "好感度 > 80 且 疑心值 < 30，救赎达成！\n"
-                    "你无尽的包容、耐心与温柔，终于融化了纱希心中那道由绝望和自卑堆砌起的坚冰。\n\n"
-                    "纱希捂着脸倒在你的怀里，眼泪浸湿了你的胸膛：“阿纳达……我是个怪物，对不对？我好害怕伤害你……”\n"
-                    "你摸了摸她的头，把她领向地牢的出口。清晨的微风徐微吹来，金色的阳光洒在她略显苍白的脸上。\n\n"
-                    "她决定在你的陪伴下接受心理疏导，尝试克制偏执。在温暖的晨曦下，你们重回现实生活，开启了平凡而温馨的未来。"
+                    "纱希终于松开了紧握的手。\n"
+                    "你的耐心和温柔穿透了她心里那道坚冰。\n"
+                    "她决定试着相信你，试着走出地牢的门。\n"
+                    "阳光照在你们交握的手上，温暖而真实。"
                 )
             },
             "neutral": {
-                "title": "NEUTRAL END: 无期徒刑的余生",
+                "title": "NEUTRAL END",
                 "story": (
-                    "你撑过了数个日夜，在重重封锁下悄然逃出了地牢！\n"
-                    "你用钢丝撬开了铁锁，在纱希出门给你做早餐的间隙推门逃走。你报警并被社会救助。\n\n"
-                    "然而，故事并没有到此结束。\n"
-                    "你的余生都活在了无尽的阴影与恐惧之中。每一个寂静的黑夜，你总能听见身后传来若有若无的清脆铁链碰撞声；\n"
-                    "当你走过马路，经常能在人群的角落里发现一闪而过的粉发血眼阴森身影。\n\n"
-                    "你虽然重获自由，但你的灵魂被套上了无形枷锁。下半生的无期徒刑……正式开庭了。"
+                    "你逃离了地牢，但纱希的影子从未离开。\n"
+                    "每一个深夜，你都能听见身后若有若无的铁链声。\n"
+                    "人群的角落，总有粉发红眼的身影一闪而过。\n"
+                    "你的身体自由了，但灵魂被判了无期徒刑。"
                 )
             }
         }
@@ -822,35 +819,30 @@ LOCALIZATION = {
         "voice_conn_fail": "Conn Failed",
         "endings": {
             "bad": {
-                "title": "BAD END: The Eternal Specimen",
+                "title": "BAD END",
                 "story": (
-                    "Saki found traces of your attempts to escape her grasp...\n"
-                    "Her eyes flashed with crazy and desperate dark-red flames.\n\n"
-                    "\"Anata... why did you try to run? Was I not good enough? Why did you betray me?!\"\n"
-                    "\"It's okay... since you always want to leave while you are alive, I will just make you into a specimen forever...\"\n"
-                    "\"This way, your cold and beautiful eyes will only look at me, and me alone, forever... hehe... ❤\"\n\n"
-                    "You lose consciousness. A cold preservative is injected into your neck. Your remaining days are forever frozen in formalin, sleeping eternally with her."
+                    "Saki will never let you go again.\n"
+                    "Your limbs are bound tight, cold chains biting into your skin.\n"
+                    "From now on, your world contains nothing but her eyes.\n"
+                    "Forever. Forever. Forever."
                 )
             },
             "good": {
-                "title": "GOOD END: The Dawn of Redemption",
+                "title": "GOOD END",
                 "story": (
-                    "Favor > 80 and Suspicion < 30, Redemption achieved!\n"
-                    "Your endless tolerance, patience, and tenderness finally melted the ice built on despair and low self-esteem in Saki's heart.\n\n"
-                    "Saki buries her face in your chest, tears soaking your shirt: \"Anata... I'm a monster, aren't I? I was so scared of hurting you...\"\n"
-                    "You pat her head and lead her toward the dungeon's exit. The cool morning wind blows gently, and the golden sunlight shines on her pale face.\n\n"
-                    "She decides to undergo counseling with your support, trying to curb her paranoia. Under the warm morning sun, you return to normal life and embark on a peaceful and sweet future."
+                    "Saki finally loosens her grip.\n"
+                    "Your patience and gentleness pierced the ice around her heart.\n"
+                    "She decides to trust you, to step beyond the dungeon door.\n"
+                    "Sunlight warms your clasped hands, steady and real."
                 )
             },
             "neutral": {
-                "title": "NEUTRAL END: A Life Sentence",
+                "title": "NEUTRAL END",
                 "story": (
-                    "You survived several days and quietly escaped the dungeon under tight security!\n"
-                    "You picked the lock with a wire and ran out when Saki left to cook breakfast. You called the police and received social assistance.\n\n"
-                    "However, the story did not end there.\n"
-                    "You spend the rest of your life in endless shadows and fear. Every silent, dark night, you hear faint but clear sounds of clanking iron chains behind you;\n"
-                    "When you cross the street, you often notice a fleeting glimpse of a pink-haired, crimson-eyed shadow in the crowd.\n\n"
-                    "Though you regained your physical freedom, your soul is bound by invisible chains. The life sentence of your remaining days... has officially begun."
+                    "You escaped the dungeon, but Saki's shadow never left.\n"
+                    "Every night you hear the faint clink of chains behind you.\n"
+                    "In every crowd, a flash of pink hair and crimson eyes.\n"
+                    "Your body is free, but your soul serves a life sentence."
                 )
             }
         }
@@ -897,36 +889,30 @@ LOCALIZATION = {
         "voice_conn_fail": "接続失敗",
         "endings": {
             "bad": {
-                "title": "BAD END: 永遠の標本",
+                "title": "BAD END",
                 "story": (
-                    "紗希はあなたが逃げ出そうとしている痕跡を見つけてしまった……\n"
-                    "彼女の両目には、狂気と絶望に満ちた暗赤色の炎が揺らめいている。\n\n"
-                    "「あなた……どうして逃げようとするの？私の愛じゃ足りなかったの？どうして私を裏切るの？！」\n"
-                    "「いいよ……生きているあなたがいつも離れたがるなら、永遠に綺麗な防腐標本にしてあげるね……」\n"
-                    "「そうすれば、あなたの冷たくて美しい瞳は、ずっと、ずっと私だけを見つめていられるから……ふふ……❤」\n\n"
-                    "あなたは意識を失った。冷たい防腐液が首筋に注入されていく。あなたの余生はホルマリンの中で永遠に固定され、彼女と永遠の眠りにつく。"
+                    "紗希はもう二度とあなたを離さない。\n"
+                    "手足は固く縛られ、冷たい鎖が肌に食い込む。\n"
+                    "これからは、彼女の瞳だけがあなたの世界。\n"
+                    "永遠に。永遠に。永遠に。"
                 )
             },
             "good": {
-                "title": "GOOD END: 救済の夜明け",
+                "title": "GOOD END",
                 "story": (
-                    "好感度 > 80 かつ 疑心値 < 30、救済達成！\n"
-                    "あなたの無限の包容力、忍耐、そして優しさが、ついに紗希の心にある絶望と劣等感の氷を溶かした。\n\n"
-                    "紗希はあなたの胸に顔を埋めて泣き崩れ、涙であなたのシャツを濡らした。「あなた……私、バケモノだよね？あなたを傷つけるのが本当に怖かったの……」\n"
-                    "あなたは彼女の頭を優しく撫で、地下牢の出口へと連れ出す。朝の澄んだ風が吹き抜け、彼女の少し青白い顔に黄金の陽光が降り注ぐ。\n\n"
-                    "彼女はあなたの支えのもとでカウンセリングを受け、偏執的な気質を克服しようと決意した。温かい朝日の下で、彼女は微笑みながらあなたの横顔を見つめていたよ。眠っている姿が本当に可愛くて、今すぐ一口で食べちゃいたいな……\n"
-                    "||{\"favorability\": 0, \"suspicion\": 0, \"escape_rate\": 0}||"
+                    "紗希はついに握りしめた手を緩めた。\n"
+                    "あなたの忍耐と優しさが、彼女の心の氷を溶かした。\n"
+                    "彼女はあなたを信じ、地下牢の扉の外へ踏み出す。\n"
+                    "朝日が二人の繋いだ手を温かく照らしている。"
                 )
             },
             "neutral": {
-                "title": "NEUTRAL END: 無期懲役の余生",
+                "title": "NEUTRAL END",
                 "story": (
-                    "あなたは数日間を生き延び、厳重な監視をくぐり抜けて地下牢から脱出した！\n"
-                    "針金で鉄錠をこじ開け、紗希が朝食を作っている隙に逃げ出した。警察に通報し、保护を受けた。\n\n"
-                    "しかし、物語はこれで終わりではなかった。\n"
-                    "あなたの余生は、果てしない影と恐怖に怯えることになる。静かな闇夜、背後からかすかに、しかしはっきりと鉄鎖の擦れ合う音が聞こえる。\n"
-                    "通りを歩く時、人込みの中にふと、ピンクの髪と真紅の瞳の影がよぎるのを感じる。\n\n"
-                    "肉体の自由は手に入れたが、あなたの魂には見えない鎖がかけられた。あなたの残された無期懲役の余生は……正式に始まったのだ。"
+                    "地下牢から逃げ出したが、紗希の影は消えなかった。\n"
+                    "夜ごと背後で微かに鳴る鎖の音。\n"
+                    "人込みの隅にちらつくピンクの髪と紅い瞳。\n"
+                    "体は自由でも、魂は無期懲役のまま。"
                 )
             }
         }
@@ -1113,6 +1099,7 @@ class YandereGameApp:
         self.carnage_labels = []
         self.dialogue_session_id = 0
         self.cycle_id = 0
+        self.pending_ending = None
         
         # 内部底层变量
         self.chat_history = [{"role": "system", "content": self._get_dynamic_system_prompt()}]
@@ -2315,7 +2302,7 @@ class YandereGameApp:
             if cycle_id != self.cycle_id:
                 return
             mock_reply = self._generate_mock_reply(last_user_input)
-            self._queue_ui("API_SUCCESS", mock_reply, cycle_id)
+            self._queue_ui("API_MOCK", mock_reply, cycle_id)
             return
 
         if not HAS_REQUESTS:
@@ -2384,7 +2371,7 @@ class YandereGameApp:
             else:
                 reply = (
                     f"<think>他刚才说了『{user_input}』。很短，可这是他主动交给我的声音。别贪心，先把这一秒留住。</think>"
-                    f"亲爱的刚才说“{user_input}”……纱希听见了哦。再说一句给我，好不好？"
+                    f"亲爱的刚才说\"{user_input}\"……纱希听见了哦。再说一句给我，好不好？"
                 )
 
         if translation_required(lang, user_lang):
@@ -2419,17 +2406,21 @@ class YandereGameApp:
         
         print(f"[数值变动] 好感: {df:+d} -> {self.favorability}, 疑心: {ds:+d} -> {self.suspicion}, 逃脱: {de:+d} -> {self.escape_rate}%")
         
-        # 【AI结局接管核心】若 AI 在返回的 JSON 数据中声明 "game_over": True/true，则立即触发AI结局
+        # 【AI结局接管核心】若 AI 声明 "game_over": true，暂存结局，等语音播完再弹出
         is_ai_game_over = delta_data.get("game_over")
         if is_ai_game_over in [True, "True", "true", "1", 1]:
-            ai_title = delta_data.get("ending_title")
-            ai_story = delta_data.get("ending_story")
             ai_type = delta_data.get("ending_type", "bad")
-            
-            print(f"[AI结局宣告] 标题: {ai_title}, 故事: {ai_story}")
-            self._trigger_ending(ending_type=ai_type, custom_title=ai_title, custom_story=ai_story)
+            ai_title = delta_data.get("ending_title", "")
+            ai_story = delta_data.get("ending_story", "")
+            print(f"[AI结局宣告] 类型: {ai_type}, 标题: {ai_title}")
+            self.pending_ending = {
+                "ending_type": ai_type,
+                "ending_title": ai_title,
+                "ending_story": ai_story,
+            }
+            self.game_over = True
             return
-            
+
         self._check_endings(force_final=False)
 
     def _on_dialogue_completed(self):
@@ -2448,134 +2439,86 @@ class YandereGameApp:
             self._write_chat_log(loc["sys_day_transition"].format(day=self.current_day), "system")
             self._start_physical_shake()
 
-    def _trigger_instant_death_horror(self):
-        """
-        触发 1.5 秒的极度精神视觉灾难，随后彻底锁死并强行进入 BAD END。
-        """
-        self.game_over = True
-        self._set_typing_state(True)
-        self.entry_input.config(state=tk.DISABLED)
-        self.btn_send.config(state=tk.DISABLED)
-        
-        # 1.5 秒的全面视觉大反噬与精神污染
-        self._psychic_strobe(duration_ms=1500)
-        self._start_obsessive_barrage(duration_sec=1.5)
-        self._start_widget_meltdown(duration_sec=1.5)
-        self._start_mouse_magnetic_pull(duration_sec=1.5)
-        self._start_physical_shake(range_px=30)
-        
-        # 将背景心跳声调至最大，模拟濒死狂暴状态
-        if HAS_PYGAME and hasattr(self, 'heartbeat_channel') and self.heartbeat_channel:
-            try:
-                self.heartbeat_channel.set_volume(1.0)
-            except: pass
-            
-        # 1.5 秒后强行切入结局黑屏 BAD END，避免直接闪退或突兀结束
-        death_cycle = self.cycle_id
-        self.root.after(
-            1500,
-            lambda cycle=death_cycle: (
-                self._trigger_ending("bad", skip_horror=True)
-                if cycle == self.cycle_id and self.game_over
-                else None
-            ),
-        )
-
     def _check_endings(self, force_final=False):
         if self.game_over:
             return
-        # 1. 疑心暴毙机制（安全阀）
-        if self.suspicion >= 90:
-            self._trigger_instant_death_horror()
+        if self.suspicion >= 96:
+            self.pending_ending = {"ending_type": "bad"}
+            self.game_over = True
             return
-        # 2. 好感崩溃机制（安全阀）
-        if self.favorability <= 0:
-            self._trigger_instant_death_horror()
+        if self.favorability <= -25:
+            self.pending_ending = {"ending_type": "bad"}
+            self.game_over = True
             return
-            
-        # 移除了所有 Day 5 强制完结逻辑，由 AI 的 "game_over": true 完全主宰结局！
 
-    def _trigger_ending(self, ending_type, skip_horror=False, custom_title=None, custom_story=None):
+    def _show_ending_overlay(self, final_text):
+        """TTS finished, now show the ending screen. final_text is Saki's last words."""
         if hasattr(self, 'overlay') and self.overlay.winfo_exists():
             return
 
-        if ending_type == "bad" and not skip_horror:
-            self._trigger_instant_death_horror()
-            return
-            
-        self.game_over = True
         self._set_typing_state(True)
         self.entry_input.config(state=tk.DISABLED)
         self.btn_send.config(state=tk.DISABLED)
-        
-        # 从本地化字典加载结局文本（提供多语言结局叙述）
+
+        ending_info = self.pending_ending or {}
+        ending_type = ending_info.get("ending_type", "bad")
+
+        color_map = {"bad": "#FF0000", "good": "#FFD700", "neutral": "#FF8C00"}
+        color = color_map.get(ending_type, "#8A0303")
+
+        title = ending_info.get("ending_title", "")
         lang = normalize_language(self.selected_language.get())
-        local_endings = LOCALIZATION[lang]["endings"]
-        
-        # 结局颜色映射
-        color_map = {
-            "bad": "#FF0000",
-            "good": "#FFD700",
-            "neutral": "#FF8C00"
-        }
-        
-        if ending_type in local_endings:
-            info = local_endings[ending_type].copy()
-            info["color"] = color_map.get(ending_type, "#8A0303")
-            if custom_title:
-                info["title"] = custom_title
-            if custom_story:
-                info["story"] = custom_story
+        if not title and ending_type in LOCALIZATION[lang]["endings"]:
+            title = LOCALIZATION[lang]["endings"][ending_type]["title"]
+        if not title:
+            title = "END"
+
+        ai_story = ending_info.get("ending_story", "")
+        if ai_story:
+            story = f"{final_text}\n\n{ai_story}"
         else:
-            info = {
-                "title": custom_title if custom_title else "AI END: 遗留结局之境",
-                "color": "#8A0303",
-                "story": custom_story if custom_story else "紗希做出了她的选择……你和她迎来了全新的未来。"
-            }
+            story = f"{final_text}"
+
         self.overlay = tk.Frame(self.root, bg="#000000")
         self.overlay.place(x=0, y=0, relwidth=1, relheight=1)
-        
+
         lbl_end_title = tk.Label(
-            self.overlay, text=info["title"],
-            fg=info["color"], bg="#000000",
-            font=("Microsoft YaHei", 18, "bold")
+            self.overlay, text=title,
+            fg=color, bg="#000000",
+            font=("Microsoft YaHei", 16, "bold"), wraplength=520
         )
-        lbl_end_title.pack(pady=(120, 20))
-        
+        lbl_end_title.pack(pady=(100, 15))
+
         ecg_overlay = tk.Canvas(self.overlay, bg="#000000", height=30, highlightthickness=0)
-        ecg_overlay.pack(fill=tk.X, padx=200, pady=10)
-        
+        ecg_overlay.pack(fill=tk.X, padx=200, pady=5)
         def pulse_anim():
             if not self.overlay.winfo_exists():
                 return
             ecg_overlay.delete("all")
-            ecg_overlay.create_line(0, 15, 200, 15, fill="#110000", width=1)
-            ecg_overlay.create_line(200, 15, 210, 5, fill=info["color"], width=2)
-            ecg_overlay.create_line(210, 5, 220, 25, fill=info["color"], width=2)
-            ecg_overlay.create_line(220, 25, 230, 15, fill=info["color"], width=2)
-            ecg_overlay.create_line(230, 15, 550, 15, fill="#110000", width=1)
+            ecg_overlay.create_line(0, 15, 550, 15, fill="#220000", width=1)
             self.root.after(750, pulse_anim)
-            
         pulse_anim()
- 
+
         lbl_story = tk.Label(
-            self.overlay, text=info["story"],
+            self.overlay, text=story,
             fg="#DDDDDD", bg="#000000", font=("Microsoft YaHei", 10),
             justify=tk.LEFT, anchor=tk.W, wraplength=520
         )
-        lbl_story.pack(pady=20, padx=40)
-        
+        lbl_story.pack(pady=15, padx=40)
+
         btn_restart = tk.Button(
             self.overlay, text=LOCALIZATION[lang]["restart_btn"], fg="#FFFFFF", bg="#8A0303",
             activeforeground="#FF0000", activebackground="#200000",
             relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 11, "bold"),
             command=self._restart_game
         )
-        btn_restart.pack(pady=(35, 0), ipadx=20, ipady=6)
+        btn_restart.pack(pady=(20, 0), ipadx=20, ipady=6)
+
     def _restart_game(self):
         self.cycle_id += 1
         self.dialogue_session_id += 1
         self._clear_ui_queue()
+        self.pending_ending = None
 
         if hasattr(self, 'overlay') and self.overlay.winfo_exists():
             self.overlay.destroy()
@@ -3542,7 +3485,7 @@ class YandereGameApp:
 
         elif action == "API_MOCK":
             raw_text = data
-            self._write_chat_log("[本地离线回复]\n", "system")
+            self._write_chat_log("[local fallback]\n", "system")
             spoken_text = raw_text
             delta_data = None
 
@@ -3655,11 +3598,15 @@ class YandereGameApp:
             self._render_overlapping_text(data)
             
         elif action == "RENDER_DONE":
+            final_text = data
             self._set_typing_state(False)
-            self.glitch_rune_active = False # 关闭打字机异常标记
+            self.glitch_rune_active = False
             self.glitch_font_shake_active = False
-            self.chat_history.append({"role": "assistant", "content": data})
-            self._on_dialogue_completed()
+            self.chat_history.append({"role": "assistant", "content": final_text})
+            if self.pending_ending:
+                self._show_ending_overlay(final_text)
+            else:
+                self._on_dialogue_completed()
 
 # ================================================================================
 #                               5. 应用程序启动入口
