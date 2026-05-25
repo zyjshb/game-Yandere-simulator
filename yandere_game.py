@@ -491,20 +491,22 @@ def _negation_prefixes():
     )
 
 def _is_negated(text, keyword):
-    """Check if *keyword* is negated in *text* (e.g. 不喜欢, don't like, 好きじゃない)."""
+    """Check if *keyword* is negated in *text* (e.g. 不喜欢, don't like, 好きじゃない).
+    Uses a narrow 3-char window before the keyword to avoid cross-word false positives."""
     idx = text.find(keyword)
     if idx == -1:
         return False
-    before = text[max(0, idx - 8):idx].rstrip()
+    before = text[max(0, idx - 3):idx]
     if not before:
         return False
-    # 单字否定词：只要出现在 keyword 前 8 字符窗口内即视为否定
+    # 单字否定词：3 字符窗口内出现即视为该关键词被否定
     _single_neg = ("不", "没", "别", "莫", "勿", "未", "非", "无")
     for ch in _single_neg:
         if ch in before:
             return True
+    # 多字否定词
     for neg in _negation_prefixes():
-        if before.endswith(neg) or before.startswith(neg):
+        if len(neg) > 1 and before.endswith(neg):
             return True
     return False
 
