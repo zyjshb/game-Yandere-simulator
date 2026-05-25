@@ -3539,13 +3539,52 @@ class YandereGameApp:
             self._update_game_stats(delta_data)
             self.trigger_glitch_effect()  # 触发心理恐怖视觉异常干扰
             self._start_typewriter_effect(think_content, spoken_text)
-            
+
+        elif action == "API_MOCK":
+            raw_text = data
+            self._write_chat_log("[本地离线回复]\n", "system")
+            spoken_text = raw_text
+            delta_data = None
+
+            if "||" in raw_text:
+                try:
+                    parts = raw_text.split("||")
+                    spoken_text = parts[0].strip()
+                    json_str = parts[1].strip()
+                    delta_data = json.loads(json_str)
+                except Exception:
+                    pass
+
+            think_content = ""
+            lower_text = spoken_text.lower()
+            start_idx = lower_text.find("<think>")
+            if start_idx != -1:
+                end_idx = lower_text.find("</think>", start_idx + 7)
+                if end_idx != -1:
+                    think_content = spoken_text[start_idx + 7 : end_idx].strip()
+                    spoken_text = spoken_text[:start_idx] + " " + spoken_text[end_idx + 8:]
+                else:
+                    think_content = spoken_text[start_idx + 7 :].strip()
+                    spoken_text = spoken_text[:start_idx]
+
+            user_input = getattr(self, 'last_user_input', "")
+            delta_data = normalize_delta_payload(delta_data)
+            if not delta_data:
+                delta_data = self._calculate_fallback_deltas(user_input)
+
+            selected_lang = normalize_language(self.selected_language.get())
+            user_lang = detect_language(user_input, selected_lang)
+            spoken_text = ensure_readability_translation(spoken_text, selected_lang, user_lang, user_input)
+
+            self._update_game_stats(delta_data)
+            self._start_typewriter_effect(think_content, spoken_text)
+
         elif action == "API_FALLBACK":
             user_input, err_detail = data
             lang = normalize_language(self.selected_language.get())
             self._write_chat_log(LOCALIZATION[lang]["sys_fallback"].format(err=err_detail), "system")
             mock_reply = self._generate_mock_reply(user_input)
-            self._queue_ui("API_SUCCESS", mock_reply)
+            self._queue_ui("API_MOCK", mock_reply)
             
         elif action == "API_ERROR":
             lang = normalize_language(self.selected_language.get())
