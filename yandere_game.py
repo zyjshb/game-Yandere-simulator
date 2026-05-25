@@ -623,18 +623,18 @@ def ensure_readability_translation(text, selected_lang, user_lang, user_input):
     return text.rstrip() + build_offline_translation_line(intent["name"], user_lang)
 
 def build_metric_rules_prompt():
-    lines = []
-    for rule in INTENT_RULES:
-        if rule["name"] == "default":
-            label = "普通闲聊"
-        else:
-            label = " / ".join(rule["keywords"][:4])
-        f_min, f_max, s_min, s_max, e_min, e_max = rule["delta"]
-        lines.append(
-            f"- {label}: {rule['prompt']} 数值范围 favorability {f_min}..{f_max}, "
-            f"suspicion {s_min}..{s_max}, escape_rate {e_min}..{e_max}."
-        )
-    return "\n".join(lines)
+    return (
+        "你是纱希的数值管家，拥有对 favorability / suspicion / escape_rate 的全权裁决权。\n"
+        "参考以下指南自主决定每轮 delta 的符号和幅度，不要被固定范围束缚：\n"
+        "- 好感 favorability：正值代表纱希更信任/依恋，负值代表受伤/疏远。\n"
+        "- 疑心 suspicion：正值代表纱希更怀疑/警觉，负值代表放松/安心。\n"
+        "- 逃脱 escape_rate：正值代表玩家逃跑意图上升，负值代表逃跑意图下降。\n\n"
+        "【裁决原则】\n"
+        "1. 根据玩家语气、内容、前后文一致性和纱希当前情绪状态，自主判断每项 delta 的正负和大小。\n"
+        "2. 轻描淡写的一句话 → delta 幅度小（±3~±8）；强烈告白或剧烈冲突 → 幅度大（±20~±40）。\n"
+        "3. suspicion 高于 70 时，正向话语的效果减半（纱希不轻易相信）。\n"
+        "4. 只有真正的结局高潮时刻才将 game_over 设为 true。"
+    )
 
 def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorability, suspicion, escape_rate):
     selected_lang = normalize_language(selected_lang)
@@ -676,7 +676,10 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
         "- suspicion 高于 70: 语气更警觉、更短促，更多追问和控制欲。\n"
         "- favorability 高于 80 且 suspicion 低于 35: 语气柔软、依赖、短暂安心。\n"
         "- escape_rate 高于 70: 明显怀疑玩家在计划逃离，但仍保持角色台词，不要变成旁白。\n\n"
-        "【数值协议】\n"
+        "【AI 全权数值协议】\n"
+        "你拥有对 favorability / suspicion / escape_rate 的完全自主裁决权。\n"
+        "本地不再覆盖你的数值——你决定这轮加多少、扣多少，游戏状态由你掌控。\n"
+        "delta 可以是正数也可以是负数，幅度由你根据玩家话语的冲击力自由裁量。\n"
         f"{build_metric_rules_prompt()}\n"
         "没有特殊高潮时，不要轻易结束游戏。"
     )
@@ -3479,18 +3482,18 @@ class YandereGameApp:
                     except Exception as e:
                         print(f"[正则数据解析异常] {e}")
             
-            # 3. 合理修正与兜底方案
+            # 3. 数值处理：AI 全权管理，本地只做安全钳制（范围 0-100）
             user_input = getattr(self, 'last_user_input', "")
             delta_data = normalize_delta_payload(delta_data)
-            
+
             if not delta_data:
-                delta_data = self._calculate_fallback_deltas(user_input)
-            elif user_input and all(delta_data.get(k, 0) == 0 for k in ("favorability", "suspicion", "escape_rate")):
-                # 玩家回合的全 0 数值通常意味着模型漏判，交给本地意图规则兜底。
+                # AI 没有返回有效 JSON，本地兜底
                 delta_data = self._calculate_fallback_deltas(user_input)
             else:
-                # 模型可写台词，但数值必须服从本地意图状态机，避免反向加分或越界。
-                delta_data = align_delta_with_player_intent(delta_data, user_input)
+                # AI 全权判决，仅钳制到游戏合法范围，不再用本地规则覆盖
+                for key in ("favorability", "suspicion", "escape_rate"):
+                    if key in delta_data:
+                        delta_data[key] = clamp_to_range(delta_data[key], -100, 100)
             
             # 再次清理可能残留的末尾 JSON 或 || 符号以保持台词干净
             if "||" in spoken_text:
