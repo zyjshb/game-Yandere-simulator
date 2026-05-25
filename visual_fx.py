@@ -228,6 +228,57 @@ class ProceduralFX:
 
         return ImageTk.PhotoImage(img)
 
+    @staticmethod
+    def screen_tear(width, height, num_tears=8):
+        """Generate horizontal CRT tear lines composed of digital white/red noise strips."""
+        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        for _ in range(num_tears):
+            ty = random.randint(0, height - 15)
+            th = random.randint(3, 12)
+            # Draw horizontal static noise in this stripe
+            for x in range(0, width, random.randint(1, 4)):
+                if random.random() < 0.7:
+                    c = random.choice([
+                        (255, 255, 255, random.randint(100, 230)),
+                        (200, 0, 0, random.randint(80, 200)),
+                        (100, 100, 100, random.randint(50, 150))
+                    ])
+                    draw.rectangle([x, ty, x + random.randint(2, 10), ty + th], fill=c)
+        return ImageTk.PhotoImage(img)
+
+    @staticmethod
+    def pixel_melt_layer(width, height, intensity=0.5):
+        """Generate vertical melting tracks with red pixel trails and digital smear columns."""
+        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        num_drips = int(30 + intensity * 80)
+        for _ in range(num_drips):
+            x = random.randint(0, width - 5)
+            y_start = random.randint(0, int(height * 0.8))
+            length = random.randint(20, int(150 + intensity * 200))
+            w = random.randint(1, 4)
+
+            for dy in range(length):
+                cy = y_start + dy
+                if cy >= height:
+                    break
+                alpha_factor = 1.0 - (dy / length)
+                alpha = int((100 + random.randint(0, 120)) * alpha_factor)
+                cx = x + (random.randint(-1, 1) if random.random() < 0.1 else 0)
+
+                color = (
+                    int(180 + 75 * alpha_factor),
+                    0,
+                    int(10 + 20 * (1.0 - alpha_factor)),
+                    alpha
+                )
+                draw.rectangle([cx, cy, cx + w - 1, cy + 1], fill=color)
+        return ImageTk.PhotoImage(img)
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Canvas-based particle engine (ambient floating embers / dust motes)
@@ -320,6 +371,7 @@ class OverlayManager:
         self.parent = parent
         self._label = None
         self._photo_ref = None  # keep alive to prevent GC
+        self._after_id = None   # Track the active timer to prevent race conditions
 
     def show(self, photo_image, duration_ms=None):
         self.hide()
@@ -328,9 +380,16 @@ class OverlayManager:
                                highlightthickness=0)
         self._label.place(x=0, y=0, relwidth=1, relheight=1)
         if duration_ms is not None:
-            self.parent.after(duration_ms, self.hide)
+            self._after_id = self.parent.after(duration_ms, self.hide)
 
     def hide(self):
+        if self._after_id is not None:
+            try:
+                self.parent.after_cancel(self._after_id)
+            except Exception:
+                pass
+            self._after_id = None
+            
         if self._label is not None:
             try:
                 self._label.destroy()

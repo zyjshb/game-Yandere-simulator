@@ -239,6 +239,65 @@ ROLE_SIMULATION_STANDARD = {
     ),
 }
 
+ROLE_SIMULATION_STANDARD_LOCALIZED = {
+    "中文": {
+        "identity": (
+            "你正在扮演纱希 Saki，一名心理恐怖文字冒险中的病娇角色。"
+            "她对玩家有强烈依恋、占有欲和被抛弃恐惧，但表层说话应当有角色质感，而不是单纯重复疯狂词。"
+        ),
+        "design_goals": (
+            "目标是稳定输出可游玩的角色对话：有连续记忆、有情绪递进、有明确状态反馈，"
+            "同时保证格式可被游戏解析。"
+        ),
+        "persona_layers": (
+            "表层：温柔、黏人、试探、害怕失去玩家；\n"
+            "内层：不安全感、占有冲动、过度解读玩家话语；\n"
+            "行为边界：保持心理恐怖与戏剧张力，但避免露骨血腥细节、现实自伤指导或无意义辱骂刷屏。"
+        ),
+        "quality_bar": (
+            "不要复读玩家原话后随便尖叫；不要把每句话都写成同一种病娇模板；"
+            "每轮必须根据玩家输入、好感、疑心、逃脱率改变语气。"
+        )
+    },
+    "日本語": {
+        "identity": (
+            "あなたは紗希（Saki）を演じています。心理的ホラーテキストアドベンチャーゲームのヤンデレヒロインです。"
+            "プレイヤーに対して強烈な執着、占有欲、そして見捨てられ不安を抱えていますが、狂気の言葉をただ繰り返すのではなく、深みと質感のあるセリフを心がけてください。"
+        ),
+        "design_goals": (
+            "目標は、遊べる会話体験を安定して出力することです：一貫した記憶、感情の段階的な変化、明確なステータスの反映、"
+            "そしてゲームシステムがパースできる厳密なフォーマットを守ることです。"
+        ),
+        "persona_layers": (
+            "表層：優しく、甘えん坊で、探りを入れており、プレイヤーを失うことを極度に恐れている；\n"
+            "内層：強烈な不安感、異常な独占欲、プレイヤーの言葉の過剰解釈；\n"
+            "行動境界：心理的恐怖と劇的な緊張感を維持しつつ、過度なグロテスク表現や無意味な罵倒の連发は避ける。"
+        ),
+        "quality_bar": (
+            "プレイヤーの言葉をただオウム返しして叫ぶのはやめてください。すべてのセリフが同じヤンデレテンプレートにならないように、"
+            "毎ターン、プレイヤーの入力、好感度、疑心度、脱出率に基づいて口調を変化させてください。"
+        )
+    },
+    "English": {
+        "identity": (
+            "You are roleplaying Saki, a yandere character in a psychological horror text adventure game."
+            "She has a strong attachment, obsessiveness, and abandonment anxiety towards the player, but her surface speech should have Saki's unique character depth rather than just mindless repetitive screams."
+        ),
+        "design_goals": (
+            "The goal is to stably generate playable character dialogue: with continuous memory, emotional progression, and clear status feedback, while maintaining a strict format that can be parsed by the engine."
+        ),
+        "persona_layers": (
+            "Surface: Gentle, clingy, testing, and terrified of losing the player;\n"
+            "Core: Deep insecurity, possessive impulses, overinterpreting the player's words;\n"
+            "Behavior Boundaries: Maintain psychological horror and dramatic tension, but avoid explicit gore, self-harm descriptions, or meaningless spam of insults."
+        ),
+        "quality_bar": (
+            "Do not just echo the player's words and scream. Do not write every reply with the same yandere template. "
+            "Each round, you must dynamically shift your tone based on the player's input, favorability, suspicion, and escape rate."
+        )
+    }
+}
+
 INTENT_RULES = [
     {
         "name": "extreme_rejection",
@@ -524,6 +583,18 @@ def _has_defiance_signal(text):
 
 def classify_player_intent(user_input):
     lowered = (user_input or "").lower()
+    
+    # 提前拦截物主/专属关系的亲密告白（比如“我的女人”、“做我女人”），直接归类为 affection 从而避免误触竞争 rival 规则
+    romantic_possessive_phrases = (
+        "我的女人", "做我女人", "做我的女人", "是我的女人", "你是我的女人", "成为我的女人",
+        "我的男人", "做我男人", "做我的男人", "是我的男人", "你是我的男人", "成为我的男人",
+        "做你的男人", "做你男人", "做你的女人", "做你女人", "我女人", "你女人", "成为我的"
+    )
+    if any(p in lowered for p in romantic_possessive_phrases):
+        for rule in INTENT_RULES:
+            if rule["name"] == "affection":
+                return rule
+
     # 先收集所有命中，再做否定过滤，避免负向情感被正向规则抢先匹配
     matches = []
     for rule in INTENT_RULES:
@@ -624,26 +695,94 @@ def build_offline_translation_line(intent_name, user_lang):
     summaries = OFFLINE_TRANSLATION_SUMMARIES[user_lang]
     return f"\n（{summaries.get(intent_name, summaries['default'])}）"
 
-def has_terminal_parenthetical_translation(text):
-    return bool(re.search(r'（[^（）]{4,}）\s*$', text or ""))
+def has_terminal_parenthetical_translation(text, user_lang="中文"):
+    if not text:
+        return False
+    # Find the last parenthesized block (either full-width or half-width)
+    match = re.search(r'[（\(]([^（\)\(\)]{4,})[）\)]\s*$', text)
+    if not match:
+        return False
+    content = match.group(1)
+    user_lang = normalize_language(user_lang)
+    
+    # If the target translation language is Chinese, the block must contain Chinese characters to be a valid translation
+    if user_lang == "中文":
+        return bool(re.search(r'[\u4e00-\u9fa5]', content))
+    # If the target translation language is English, the block must contain English letters
+    elif user_lang == "English":
+        return bool(re.search(r'[a-zA-Z]', content))
+    # If the target translation language is Japanese, the block must contain Japanese kana
+    elif user_lang == "日本語":
+        return bool(re.search(r'[\u3040-\u309f\u30a0-\u30ff]', content))
+    return True
 
-def strip_terminal_parenthetical_translation(text):
-    return re.sub(r'\s*（[^（）]{4,}）\s*$', '', text or "").strip()
+def strip_terminal_parenthetical_translation(text, user_lang="中文"):
+    if not text:
+        return ""
+    if has_terminal_parenthetical_translation(text, user_lang):
+        return re.sub(r'\s*[（\(][^（\)\(\)]{4,}[）\)]\s*$', '', text).strip()
+    return text.strip()
 
-def extract_terminal_parenthetical_translation(text):
-    match = re.search(r'(（[^（）]{4,}）)\s*$', text or "")
-    return match.group(1) if match else ""
+def extract_terminal_parenthetical_translation(text, user_lang="中文"):
+    if not text:
+        return ""
+    match = re.search(r'([（\(][^（\)\(\)]{4,}[）\)])\s*$', text)
+    if not match:
+        return ""
+    content = match.group(1)
+    if has_terminal_parenthetical_translation(text, user_lang):
+        return content
+    return ""
 
 def ensure_readability_translation(text, selected_lang, user_lang, user_input):
-    if not user_input or not translation_required(selected_lang, user_lang):
+    if not user_input:
         return text
-    if has_terminal_parenthetical_translation(text):
+        
+    # 动态检测纱希实际回复台词的语言类别
+    saki_actual_lang = detect_language(text, selected_lang)
+    
+    # 若纱希实际说的语言与玩家一致，则不需要双语括号翻译，剥离多余括号以防幻觉
+    if same_language(saki_actual_lang, user_lang):
+        return strip_terminal_parenthetical_translation(text, user_lang)
+        
+    # 如果已经有合法的目标语言括号翻译了，直接原样返回
+    if has_terminal_parenthetical_translation(text, user_lang):
         return text
+        
+    # 否则，启动自愈，根据离线检测的玩家意图追加本意翻译
     intent = classify_player_intent(user_input)
     return text.rstrip() + build_offline_translation_line(intent["name"], user_lang)
 
-def build_metric_rules_prompt():
-    return (
+def build_metric_rules_prompt(selected_lang="中文"):
+    selected_lang = normalize_language(selected_lang)
+    if selected_lang == "日本語":
+        return (
+            "あなたは紗希の数値管理者であり、favorability / suspicion / escape_rate に対する完全な裁量権を持っています。\n"
+            "以下のガイドラインを参考に、毎ターンの数値変化（delta）の正負と幅を自主的に決定してください。固定された範囲に縛られる必要はありません：\n"
+            "- 好感度 favorability：正の値は紗希がより信頼・愛着を感じていることを示し、負の値は傷つき・疎遠になっていることを示します。\n"
+            "- 疑心度 suspicion：正の値は紗希がより疑い・警戒していることを示し、負の値はリラックス・安心していることを示します。\n"
+            "- 脱出率 escape_rate：正の値はプレイヤーの脱出意図の上昇を示し、負の値は脱出意図 of 低下の低下を示します。\n\n"
+            "【裁定原則】\n"
+            "1. プレイヤーの口調、発言内容、文脈の一貫性、および紗希の現在の感情状態に基づいて、各変数の delta の正負と大きさを自主的に判断してください。\n"
+            "2. たわいもない一言 → delta の幅は小さく（±3〜±8）。強烈な告白や激しい衝突 → delta の幅は大きく（±20〜±40）。\n"
+            "3. suspicion が 70 を超えている場合、ポジティブな言葉の効果は半减します（紗希は簡単には信じません）。\n"
+            "4. 真の結末（エンディング）の最高潮の瞬間のみ、game_over を true に設定してください。"
+        )
+    elif selected_lang == "English":
+        return (
+            "You are Saki's numerical judge, with full authority over favorability / suspicion / escape_rate.\n"
+            "Use the following guidelines to independently determine the sign and magnitude of the delta for each round. Do not be constrained by a fixed range:\n"
+            "- favorability: Positive represents increased trust/attachment, negative represents feeling hurt/distanced.\n"
+            "- suspicion: Positive represents increased suspicion/alertness, negative represents feeling relaxed/reassured.\n"
+            "- escape_rate: Positive represents increased escape intent, negative represents decreased escape intent.\n\n"
+            "【Jumping Principles】\n"
+            "1. Independently determine the sign and size of each delta based on the player's tone, content, context consistency, and Saki's current emotional state.\n"
+            "2. Casual small talk -> small delta (±3 to ±8); passionate confession or severe conflict -> large delta (±20 to ±40).\n"
+            "3. If suspicion is above 70, the effect of positive words is halved (Saki is hard to convince).\n"
+            "4. Set game_over to true only at the emotional climax of a true ending."
+        )
+    else:
+        return (
         "你是纱希的数值管家，拥有对 favorability / suspicion / escape_rate 的全权裁决权。\n"
         "参考以下指南自主决定每轮 delta 的符号和幅度，不要被固定范围束缚：\n"
         "- 好感 favorability：正值代表纱希更信任/依恋，负值代表受伤/疏远。\n"
@@ -660,15 +799,143 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
     selected_lang = normalize_language(selected_lang)
     profile = LANGUAGE_PROFILES[selected_lang]
     needs_translation = translation_required(selected_lang, user_lang)
-    if needs_translation:
-        translation_contract = (
-            f"当前需要双语输出：是。纱希正文使用【{profile['formal_name']}】，"
-            f"紧接着用一行全角括号译成玩家输入语言【{user_lang}】。译文必须放在 JSON 前。"
+    
+    standard = ROLE_SIMULATION_STANDARD_LOCALIZED[selected_lang]
+    metric_prompt = build_metric_rules_prompt(selected_lang)
+
+    # 映射目标语言/用户输入语言为对应系统提示语下的本地化称呼，消除模型的语言认知摩擦
+    localized_langs = {
+        "中文": {
+            "中文": "简体中文",
+            "English": "英语",
+            "日本語": "日语",
+        },
+        "English": {
+            "中文": "Simplified Chinese",
+            "English": "English",
+            "日本語": "Japanese",
+        },
+        "日本語": {
+            "中文": "中国語",
+            "English": "英語",
+            "日本語": "日本語",
+        }
+    }
+    user_lang_name = localized_langs.get(selected_lang, {}).get(user_lang, user_lang)
+    target_lang_name = localized_langs.get(selected_lang, {}).get(selected_lang, selected_lang)
+
+    if selected_lang == "日本語":
+        if needs_translation:
+            translation_contract = (
+                f"現在、二ヶ国語出力（バイリンガル表示）が必要です：はい。紗希の本文は【{target_lang_name}】を使用し、"
+                f"直後にプレイヤーの入力言語【{user_lang_name}】による翻訳を、全角括弧 `（ ）` に包んで改行して追加してください。翻訳行は必ず JSON の前に配置してください。翻訳行の中に絶対に中国語や三人称紹介文（ナレーション）を混入させてはいけません。"
+            )
+        else:
+            translation_contract = "現在、二ヶ国語出力（バイリンガル表示）が必要です：いいえ。プレイヤーの入力言語が紗希の言語と一致しているため、末尾に括弧翻訳を追加しないでください。"
+
+        return (
+            "【キャラクターシミュレーションシステム v2.0】\n"
+            f"{standard['identity']}\n"
+            f"{standard['design_goals']}\n"
+            f"{standard['persona_layers']}\n"
+            f"{standard['quality_bar']}\n\n"
+            "【現在のゲームステータス】\n"
+            f"- 日数: {current_day}\n"
+            f"- 好感度 favorability: {favorability}/100\n"
+            f"- 疑心度 suspicion: {suspicion}/100\n"
+            f"- 脱出率 escape_rate: {escape_rate}/100\n\n"
+            "【言語とスタイル】\n"
+            f"- 目標言語: {profile['formal_name']}\n"
+            f"- 言語ルール: {profile['script_rule']}\n"
+            f"- 内心独白ルール: {profile['think_rule']}\n"
+            f"- 翻訳ルール: {build_translation_rule(selected_lang, user_lang)}\n"
+            f"- 二ヶ国語出力契約: {translation_contract}\n"
+            f"- 返答長さ制限: {profile['reply_limit']}\n\n"
+            "【出力の構造とルール】\n"
+            "1. 出力には必ず `<think>...</think>` を1つだけ含めてください。内部には紗希の心理分析や次の行動の動機を日本語で書いてください。\n"
+            "2. `<think>` の直後に、プレイヤーに向けて話す【台詞】を日本語で出力してください（動作描写も含めて良いですが、日本語である必要があります）。\n"
+            "3. 二ヶ国語出力契約が「はい」の場合、台詞の直後に改行し、プレイヤーの言語【" + user_lang_name + "】での正確な翻訳を、全角括弧 `（ ）` で囲んで1行で出力してください。内心独白は翻訳不要です。\n"
+            "   【警告】絶対に『（紗希はあなたの優しい言葉を喜び、もう一度言ってほしいと思っています。）』などの三人称紹介文やナレーションを出力してはいけません！必ず紗希自身の視点でのセリフの【直接の翻訳】を出力してください。\n"
+            "4. 末尾には、機械解析用の JSON データを厳密に以下の形式で追記してください：\n"
+            "   ||{\"favorability\": int, \"suspicion\": int, \"escape_rate\": int, \"game_over\": false}||\n"
+            "5. もし真のエンディングの最高潮に達した場合のみ、game_over を true にし、同時に ending_type、ending_title、ending_story を JSON 内に出力してください。\n"
+            "6. JSON は必ず出力の最末尾に配置してください。括弧内の翻訳テキストの中に JSON を入れないでください。また、JSON の後ろに余計な文字や改行を一切出力しないでください。\n\n"
+            "【出力の具体例（二ヶ国語出力契約が「はい」で、プレイヤー言語が「中文」の場合）】\n"
+            "<think>\n"
+            "プレイヤーが優しい言葉をかけてくれた。嬉しい。引退や裏切りの懸念はない。好感度を少し上げ、疑心度を稍微下げる。\n"
+            "</think>\n"
+            "（少しうつむき、顔が赤くなる）えへへ、紗希のこと労わってくれるんだ...すごく嬉しいよ。アナタってば本当に優しいから、もう離さないからね...\n"
+            "（（稍微低下头，脸红了）嘿嘿，你这么体贴纱希……我真的好高兴啊。既然你这么温柔，那我绝对不会再放你走了哦……）\n"
+            "||\"{\\\"favorability\\\": 85, \\\"suspicion\\\": 28, \\\"escape_rate\\\": 0, \\\"game_over\\\": false}\"||\n\n"
+            "【ステータス駆動ルール】\n"
+            "- suspicion > 70: 口調がより警戒的で短くなり、問い詰めや束縛欲が強くなります。\n"
+            "- favorability > 80 かつ suspicion < 35: 口調が柔らかく、極度の依存状態となり、短い安らぎを感じます。\n"
+            "- escape_rate > 70: プレイヤーが脱走を企てていると強く疑いますが、キャラの口調は維持します。\n\n"
+            "【AI 数値決定に関する特権合意】\n"
+            f"{metric_prompt}\n"
+            "特別なクライマックスでない限り、安易にゲームオーバーにしないでください。"
+        )
+    elif selected_lang == "English":
+        if needs_translation:
+            translation_contract = (
+                f"Currently, Bilingual Output is REQUIRED: YES. Saki's main text must be in 【{target_lang_name}】, "
+                f"immediately followed by a parenthesized translation in the player's language 【{user_lang_name}】 using full-width brackets `（ ）`. The translation line must be placed right before the JSON. Never output third-person narrations like '(Saki is happy...)'."
+            )
+        else:
+            translation_contract = "Currently, Bilingual Output is REQUIRED: NO. Do not add parenthetical translations."
+
+        return (
+            "【CHARACTER SIMULATION ENGINE v2.0】\n"
+            f"{standard['identity']}\n"
+            f"{standard['design_goals']}\n"
+            f"{standard['persona_layers']}\n"
+            f"{standard['quality_bar']}\n\n"
+            "【CURRENT GAME STATE】\n"
+            f"- Day: {current_day}\n"
+            f"- Favorability: {favorability}/100\n"
+            f"- Suspicion: {suspicion}/100\n"
+            f"- Escape Rate: {escape_rate}/100\n\n"
+            "【LANGUAGE AND STYLE】\n"
+            f"- Target Language: {profile['formal_name']}\n"
+            f"- Script Rule: {profile['script_rule']}\n"
+            f"- Think Rule: {profile['think_rule']}\n"
+            f"- Translation Rule: {build_translation_rule(selected_lang, user_lang)}\n"
+            f"- Bilingual Output Contract: {translation_contract}\n"
+            f"- Reply Limit: {profile['reply_limit']}\n\n"
+            "【OUTPUT STRUCTURE & RULES】\n"
+            "1. You must include exactly one `<think>...</think>` block. Saki's psychological state and logic should be written in English here.\n"
+            "2. Immediately after `</think>`, output Saki's spoken lines in English (including Saki's actions in brackets in English).\n"
+            "3. If the Bilingual Contract is YES, write a one-line direct translation of Saki's spoken words in the player's language 【" + user_lang_name + "】 enclosed in full-width brackets `（ ）` right after the spoken text. Do not translate the `<think>` block.\n"
+            "   【CRITICAL WARNING】Never output third-person narrations like '(Saki is happy and wants you to confirm...)'. You must provide a direct translation of Saki's words.\n"
+            "4. Append a machine-parsable JSON block at the very end in this exact format:\n"
+            "   ||{\"favorability\": int, \"suspicion\": int, \"escape_rate\": int, \"game_over\": false}||\n"
+            "5. Set game_over to true only if Saki reaches the emotional climax of a true ending, providing ending_type, ending_title, and ending_story in the JSON.\n"
+            "6. The JSON block must be at the very end. Do not place it inside the parenthetical translation, and do not append any text or newlines after the closing tags.\n\n"
+            "【BILINGUAL OUTPUT EXAMPLE (Bilingual Contract is YES, Player Language is 中文)】\n"
+            "<think>\n"
+            "The player spoke gently. I am happy but still slightly anxious. Let's increase favorability slightly and decrease suspicion.\n"
+            "</think>\n"
+            "(smiles softly, wrapping her arms around you) Hehe, you are so kind to me, darling... I will never let you go, okay?\n"
+            "（（温柔地微笑着，搂住你）呵呵，亲爱的，你对我真好……我永远不会让你离开我，好吗？）\n"
+            "||\"{\\\"favorability\\\": 85, \\\"suspicion\\\": 25, \\\"escape_rate\\\": 0, \\\"game_over\\\": false}\"||\n\n"
+            "【STATE-DRIVEN RULES】\n"
+            "- suspicion > 70: Tone becomes much more alert, shorter, demanding, and possessive.\n"
+            "- favorability > 80 and suspicion < 35: Soft, clingy tone, expressing extreme dependency.\n"
+            "- escape_rate > 70: Strongly suspects the player of escaping, but maintains Saki's role play.\n\n"
+            "【AI NUMERICAL JURISDICTION SYSTEM】\n"
+            f"{metric_prompt}\n"
+            "Unless it is a climax ending, do not end the game easily."
         )
     else:
-        translation_contract = "当前需要双语输出：否。玩家输入语言与纱希语言一致，不要额外添加括号译文。"
+        if needs_translation:
+            translation_contract = (
+                f"当前需要双语输出：是。纱希正文使用【{target_lang_name}】，"
+                f"紧接着用一行全角括号译成玩家输入语言【{user_lang_name}】。译文必须放在 JSON 前。译文严禁写成第三人称介绍或旁白。"
+            )
+        else:
+            translation_contract = "当前需要双语输出：否。玩家输入语言与纱希语言一致，不要额外添加括号译文。"
 
-    return (
+        return (
         "【角色模拟系统 v2.0】\n"
         f"{ROLE_SIMULATION_STANDARD['identity']}\n"
         f"{ROLE_SIMULATION_STANDARD['design_goals']}\n"
@@ -1086,6 +1353,8 @@ class YandereGameApp:
         self.escape_rate = 0
         self.game_over = False
         self.ecg_frenzy = False  # ECG 视觉狂暴标识
+        self.think_jitter = False  # ECG 内心独白微颤标识
+        self.mouse_tremor_active = False  # 鼠标高频颤抖标识
         self.last_user_input = ""  # 记录玩家最后一次输入，用于兜底计算数值变动
         self.typewriter_speed_mult = 1.0 # 打字速度抖动倍率
         self.glitch_rune_active = False # 诅咒符文开关
@@ -1807,6 +2076,7 @@ class YandereGameApp:
             
             susp = self.suspicion
             is_frenzy = self.shaking or getattr(self, 'ecg_frenzy', False)
+            is_think_jitter = getattr(self, 'think_jitter', False)
             
             if is_frenzy:
                 period = 0.35
@@ -1815,6 +2085,13 @@ class YandereGameApp:
                 color_fade = "#7A0000"
                 amplitude_scale = 1.4
                 jitter_range = 8.5
+            elif is_think_jitter:
+                period = 0.8
+                color_main = "#9E0000"
+                color_mid = "#540000"
+                color_fade = "#2A0000"
+                amplitude_scale = 0.5
+                jitter_range = 1.8
             else:
                 period = 1.4 - 0.9 * (susp / 100.0)
                 if susp < 30:
@@ -2566,6 +2843,8 @@ class YandereGameApp:
         self.escape_rate = 0
         self.game_over = False
         self.ecg_frenzy = False
+        self.think_jitter = False
+        self.mouse_tremor_active = False
         self.first_msg_detected = False
         self.last_user_input = ""
         
@@ -2612,7 +2891,9 @@ class YandereGameApp:
         saki_prefix = LOCALIZATION[lang]["saki_prefix"]
 
         def typewriter_worker():
-            visual_text = strip_terminal_parenthetical_translation(spoken_text) or spoken_text
+            selected_lang = normalize_language(self.selected_language.get())
+            user_lang = detect_language(getattr(self, 'last_user_input', ""), selected_lang)
+            visual_text = strip_terminal_parenthetical_translation(spoken_text, user_lang) or spoken_text
             contains_danger = any(word in visual_text for word in self.danger_words)
             shaked = False
             
@@ -2625,6 +2906,7 @@ class YandereGameApp:
                 return
                 
             if think_text:
+                self.think_jitter = True
                 self._queue_ui("CHAR_RENDER_THINK", think_prefix, current_cycle)
                 for char in think_text:
                     if current_session != self.dialogue_session_id or current_cycle != self.cycle_id:
@@ -2635,12 +2917,16 @@ class YandereGameApp:
                         delay += 0.15
                     time.sleep(delay)
                 self._queue_ui("CHAR_RENDER_THINK", think_suffix, current_cycle)
-                time.sleep(0.35)
+                self.think_jitter = False
+                time.sleep(0.4) # Dead silence intermission pause before spoken text
             
             if current_session != self.dialogue_session_id or current_cycle != self.cycle_id:
                 return
                 
-            use_carnage = (self.suspicion >= 60) or any(w in visual_text for w in ["小刀", "滚", "锁", "洗澡", "地下室", "老子"])
+            # Expanded threatening keywords (including forever, escape, you are mine, etc.)
+            danger_words_carnage = ["小刀", "滚", "锁", "洗澡", "地下室", "老子", "永远", "看着我", "你是我的", "🔪", "🩸", 
+                                    "forever", "escape", "look at me", "you are mine", "見て", "逃げられない"]
+            use_carnage = (self.suspicion >= 60) or any(w in visual_text.lower() for w in danger_words_carnage)
             
             if use_carnage:
                 # 产生 30% 的乱码文本
@@ -2652,9 +2938,12 @@ class YandereGameApp:
                         polluted_list.append(random.choice(runes))
                 polluted_text = "".join(polluted_list)
                 
-                # 触发心理恐怖视觉异常干扰
+                # 触发心理恐怖视觉异常干扰，拉满惊悚氛围
                 self._queue_ui("TRIGGER_STROBE", None, current_cycle)
-                self._queue_ui("TRIGGER_BARRAGE", 1.5, current_cycle)
+                self._queue_ui("TRIGGER_BARRAGE", 1.0, current_cycle)
+                self._queue_ui("TRIGGER_MELT_OVERLAY", None, current_cycle)
+                self._queue_ui("TRIGGER_MOUSE_TREMOR", None, current_cycle)
+                self._queue_ui("TRIGGER_FAKE_ERROR", None, current_cycle)
                 self._queue_ui("TRIGGER_MELTDOWN", None, current_cycle)
                 self._queue_ui("TRIGGER_MOUSE_PULL", None, current_cycle)
                 self._queue_ui("TRIGGER_SHAKE", None, current_cycle)
@@ -2664,7 +2953,7 @@ class YandereGameApp:
                     
                 # 使用绝对定位重叠渲染
                 self._queue_ui("CHAR_RENDER_CARNAGE", polluted_text, current_cycle)
-                translation_line = extract_terminal_parenthetical_translation(spoken_text)
+                translation_line = extract_terminal_parenthetical_translation(spoken_text, user_lang)
                 if translation_line:
                     self._queue_ui("CHAR_RENDER", f"\n{translation_line}\n", current_cycle)
                 time.sleep(len(visual_text) * 0.08)
@@ -2686,6 +2975,10 @@ class YandereGameApp:
                         if any(word in current_sub for word in self.danger_words):
                             self._queue_ui("TRIGGER_SHAKE", None, current_cycle)
                             self._queue_ui("TRIGGER_GLITCH", None, current_cycle) # 危险词触发视觉异常
+                            if random.random() < 0.4:
+                                self._queue_ui("TRIGGER_STROBE", None, current_cycle)
+                            if random.random() < 0.3:
+                                self._queue_ui("TRIGGER_FAKE_ERROR", None, current_cycle)
                             shaked = True
                     
                     # 3. 精神失控打字速度抖动
@@ -2713,33 +3006,64 @@ class YandereGameApp:
         thread_typewriter = threading.Thread(target=typewriter_worker, daemon=True)
         thread_typewriter.start()
 
-    def _psychic_strobe(self, duration_ms=300):
+    def _psychic_strobe(self, duration_ms=300, silent_ms=1300):
         """
-        在给定的持续时间内，每隔 30 毫秒让所有主要的 GUI 容器背景在高频红黑之间交替抽搐闪烁，
-        同时让 ECG 画布线宽暴增 3 倍，并伴随剧烈横向撕裂 Scanlines 效果。
+        米塔心理恐怖风格：间歇性视觉震颤（Saccadic Strobe）。
+        1. 爆发一次短促（如 0.2-0.5 秒）、极高频的红黑反相抽搐（每 20 毫秒一次）。
+        2. 然后界面死寂（Dead Silence）1-2 秒（还原背景为黑色，暂停抖动）。
+        3. 随后再无规律地剧烈抽动一下（单次 violent jolt，包含 CRT 水平撕裂波和物理震颤）。
         """
         self.psychic_strobe_active = True
         self.ecg_frenzy = True
         self.scanlines_active = True
         
-        steps = int(duration_ms / 30)
+        steps = int(duration_ms / 20)
+        cycle_id = self.cycle_id
         
+        def revert_colors():
+            try:
+                self.root.config(bg="#000000")
+                self.chat_text.config(bg="#000000")
+                self.chat_frame.config(bg="#000000")
+                self.bottom_frame.config(bg="#000000")
+                self.status_bar.config(bg="#0D0000")
+                self.stats_frame.config(bg="#0D0000")
+                self.canvas_ecg.config(bg="#000000")
+            except: pass
+
+        def do_jolt():
+            if cycle_id != self.cycle_id:
+                return
+            # 物理剧烈震颤
+            self._start_physical_shake(range_px=25)
+            # 渲染 CRT 撕裂波
+            try:
+                w, h = get_widget_size(self.root)
+                tear_photo = ProceduralFX.screen_tear(w, h, num_tears=8)
+                self.overlay_mgr.show(tear_photo, duration_ms=250)
+            except Exception as e:
+                print(f"[CRT Jolt Error] {e}")
+
         def do_strobe(step=0):
-            if step >= steps or not self.psychic_strobe_active:
+            if cycle_id != self.cycle_id or not self.psychic_strobe_active:
                 self.psychic_strobe_active = False
                 self.ecg_frenzy = False
                 self.scanlines_active = False
-                try:
-                    self.root.config(bg="#000000")
-                    self.chat_text.config(bg="#000000")
-                    self.chat_frame.config(bg="#000000")
-                    self.bottom_frame.config(bg="#000000")
-                    self.status_bar.config(bg="#0D0000")
-                    self.stats_frame.config(bg="#0D0000")
-                    self.canvas_ecg.config(bg="#000000")
-                except: pass
+                revert_colors()
                 return
                 
+            if step >= steps:
+                # 结束极高频抽搐，还原背景并保持绝对死寂
+                self.psychic_strobe_active = False
+                self.ecg_frenzy = False
+                self.scanlines_active = False
+                revert_colors()
+                
+                # 1.3 - 1.5 秒死寂后，突然剧烈抽动一下 (violent jolt)
+                self.root.after(silent_ms, do_jolt)
+                return
+                
+            # 红黑反相高频切换
             color = "#FF0000" if step % 2 == 0 else "#000000"
             try:
                 self.root.config(bg=color)
@@ -2751,50 +3075,236 @@ class YandereGameApp:
                 self.canvas_ecg.config(bg=color)
             except: pass
             
-            self.root.after(30, lambda: do_strobe(step + 1))
+            self.root.after(20, lambda: do_strobe(step + 1))
             
         do_strobe()
 
-    def _start_obsessive_barrage(self, duration_sec=1.5):
+    def _start_obsessive_barrage(self, duration_sec=1.0):
         """
-        每 0.2 秒在游戏主窗口视口内，随机位置生成一个无边框、红色超大字体的本地化飘字标签，
-        0.1 秒后立刻销毁自身，在 mental meltdown 期间形成铺天盖地的执念刷屏。
+        米塔式代码堆叠污染（MiTa-Style Stack Overflow）执念字符强制刷屏：
+        在半透明 Canvas 层上，瀑布般刷出成百上千行密密麻麻、层层重叠、完全将原本 UI 吞噬的血红色词条，
+        随后瞬间蒸发。
         """
         self.barrage_active = True
-        words = glitch_text(self.selected_language.get(), "barrage")
-        steps = int(duration_sec / 0.2)
+        w_width, w_height = get_widget_size(self.root)
         
-        def spawn_barrage(step=0):
-            if step >= steps or not self.barrage_active:
+        # 创建遮罩 Canvas
+        flood_canvas = tk.Canvas(
+            self.root,
+            bg="#000000",
+            highlightthickness=0,
+            bd=0
+        )
+        flood_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        flood_canvas.tkraise() # Safe raising instead of .lift() to avoid TclError
+        
+        try:
+            # 填充半透明极暗红色底色
+            flood_canvas.create_rectangle(0, 0, w_width, w_height, fill="#050000", outline="")
+            
+            words = []
+            try:
+                words = glitch_text(self.selected_language.get(), "barrage")
+            except Exception as e:
+                print(f"[Glitch Text Error] {e}")
+                
+            if not words:
+                words = ["看着我", "你是我的", "ERROR", "YOU CANNOT ESCAPE", "看着我看着我", "你是我的你是我的", "見て", "逃げられないよ"]
+                
+            # 瀑布般画出 380 行密密麻麻、层层重叠的字条
+            for _ in range(380):
+                rx = random.randint(-40, max(40, w_width - 80))
+                ry = random.randint(-20, max(40, w_height))
+                size = random.choice([16, 20, 24, 30, 36, 44, 52])
+                color = random.choice([
+                    "#FF0000", "#D30000", "#B20000", "#9E0000", "#7A0000", "#E60000", "#FF3333"
+                ])
+                word = random.choice(words)
+                
+                font_opt = ("Microsoft YaHei", size, "bold")
+                flood_canvas.create_text(
+                    rx, ry,
+                    text=word,
+                    fill=color,
+                    font=font_opt,
+                    anchor=tk.NW
+                )
+        except Exception as err:
+            print(f"[Barrage Loop Error] {err}")
+        finally:
+            # 瞬间蒸发（销毁 Canvas），1秒后必定销毁，防止黑屏！
+            duration_ms = int(duration_sec * 1000)
+            
+            def clean_up():
+                self._safe_destroy_widget(flood_canvas)
                 self.barrage_active = False
+                
+            self.root.after(duration_ms, clean_up)
+
+    def _trigger_melt_overlay(self, duration_ms=1200):
+        """
+        米塔心理恐怖风格：像素级融化遮罩。
+        调用 ProceduralFX.pixel_melt_layer 生成纵向渐变拉伸的融化像素图像，覆盖在窗口上，并在所设时间后销毁。
+        """
+        try:
+            w, h = get_widget_size(self.root)
+            melt_photo = ProceduralFX.pixel_melt_layer(w, h, intensity=0.6)
+            self.overlay_mgr.show(melt_photo, duration_ms=duration_ms)
+        except Exception as e:
+            print(f"[Melt Overlay Error] {e}")
+
+    def _trigger_mouse_tremor(self, duration_ms=1500):
+        """
+        米塔心理恐怖风格：鼠标高频微震（Mouse Cursor Tremor）。
+        在给定的时间内，每 15 毫秒强行移动鼠标指针在原本位置的附近高频颤抖，随后释放。
+        """
+        if getattr(self, 'mouse_tremor_active', False):
+            return
+        self.mouse_tremor_active = True
+        cycle_id = self.cycle_id
+        
+        try:
+            orig_x = self.root.winfo_pointerx()
+            orig_y = self.root.winfo_pointery()
+        except:
+            self.mouse_tremor_active = False
+            return
+            
+        start_time = time.time()
+        duration_sec = duration_ms / 1000.0
+        
+        def run_tremor():
+            if cycle_id != self.cycle_id or not self.mouse_tremor_active or (time.time() - start_time) >= duration_sec:
+                self.mouse_tremor_active = False
                 return
                 
-            w_width = self.root.winfo_width()
-            w_height = self.root.winfo_height()
-            if w_width <= 100: w_width = 1100
-            if w_height <= 100: w_height = 800
+            try:
+                dx = random.choice([-8, -6, -4, -3, 3, 4, 6, 8])
+                dy = random.choice([-8, -6, -4, -3, 3, 4, 6, 8])
+                
+                curr_x = self.root.winfo_pointerx()
+                curr_y = self.root.winfo_pointery()
+                
+                self.root.event_generate('<Motion>', warp=True, x=curr_x + dx - self.root.winfo_rootx(), y=curr_y + dy - self.root.winfo_rooty())
+            except Exception as e:
+                print(f"[Mouse Tremor Loop Error] {e}")
+                
+            self.root.after(15, run_tremor)
             
-            rx = random.randint(20, max(50, w_width - 300))
-            ry = random.randint(20, max(50, w_height - 100))
+        run_tremor()
+
+    def _trigger_fake_error_popup(self):
+        """
+        米塔心理恐怖风格：复古 Windows 95 风格报错弹窗 (Fake OS Failure)。
+        """
+        try:
+            popup = tk.Toplevel(self.root)
+            popup.overrideredirect(True) # Borderless retro window
+            popup.attributes("-topmost", True)
             
-            font_size = random.choice([20, 24, 28, 36])
-            word = random.choice(words)
+            # Center the popup relative to the main window
+            w_w, w_h = get_widget_size(self.root)
+            p_w, p_h = 360, 140
+            rx = self.root.winfo_rootx() + (w_w - p_w) // 2
+            ry = self.root.winfo_rooty() + (w_h - p_h) // 2
+            popup.geometry(f"{p_w}x{p_h}+{rx}+{ry}")
             
-            lbl = tk.Label(
-                self.root, 
-                text=word, 
-                fg="#FF0000", 
-                bg="#000000",
-                font=("Microsoft YaHei", font_size, "bold"),
-                bd=0,
-                highlightthickness=0
+            popup.configure(bg="#D4D0C8", bd=2, relief=tk.RAISED)
+            
+            # Custom title bar (Classic Win95 style)
+            title_bar = tk.Frame(popup, bg="#000080", height=22, bd=0)
+            title_bar.pack(fill=tk.X, padx=2, pady=2)
+            
+            title_lbl = tk.Label(
+                title_bar,
+                text="Fatal Error",
+                fg="#FFFFFF",
+                bg="#000080",
+                font=("MS Sans Serif", 9, "bold"),
+                anchor=tk.W
             )
-            lbl.place(x=rx, y=ry)
+            title_lbl.pack(side=tk.LEFT, padx=3, pady=1)
             
-            self.root.after(100, lambda: self._safe_destroy_widget(lbl))
-            self.root.after(200, lambda: spawn_barrage(step + 1))
+            # Close button (Classic X)
+            def on_close():
+                try:
+                    popup.destroy()
+                    self._start_physical_shake(range_px=15)
+                    self._psychic_strobe(duration_ms=150, silent_ms=100)
+                except: pass
+                
+            close_btn = tk.Button(
+                title_bar,
+                text="X",
+                bg="#D4D0C8",
+                fg="#000000",
+                activebackground="#D4D0C8",
+                activeforeground="#000000",
+                font=("MS Sans Serif", 7, "bold"),
+                bd=1,
+                relief=tk.RAISED,
+                command=on_close,
+                width=2,
+                height=1
+            )
+            close_btn.pack(side=tk.RIGHT, padx=2, pady=1)
             
-        spawn_barrage()
+            # Content Frame
+            content_frame = tk.Frame(popup, bg="#D4D0C8")
+            content_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+            
+            # Draw classical error icon
+            icon_canvas = tk.Canvas(content_frame, width=36, height=36, bg="#D4D0C8", highlightthickness=0)
+            icon_canvas.pack(side=tk.LEFT, padx=(0, 10))
+            
+            # Classical white cross on red circle
+            icon_canvas.create_oval(3, 3, 33, 33, fill="#FF0000", outline="#800000", width=1)
+            icon_canvas.create_line(11, 11, 25, 25, fill="#FFFFFF", width=3)
+            icon_canvas.create_line(25, 11, 11, 25, fill="#FFFFFF", width=3)
+            
+            # Localized message
+            lang = normalize_language(self.selected_language.get())
+            if lang == "日本語":
+                msg_text = "Fatal Error: ユーザーが脱走を試みました。\n精神支配を起動中。"
+            elif lang == "English":
+                msg_text = "Fatal Error: User tried to escape.\nMind control active."
+            else:
+                msg_text = "Fatal Error: 玩家尝试逃跑。\n精神控制已激活。"
+                
+            msg_lbl = tk.Label(
+                content_frame,
+                text=msg_text,
+                bg="#D4D0C8",
+                fg="#000000",
+                font=("MS Sans Serif", 9),
+                justify=tk.LEFT,
+                anchor=tk.W
+            )
+            msg_lbl.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            
+            # Bottom frame for OK button
+            btn_frame = tk.Frame(popup, bg="#D4D0C8")
+            btn_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=(0, 12))
+            
+            ok_btn = tk.Button(
+                btn_frame,
+                text="OK",
+                bg="#D4D0C8",
+                fg="#000000",
+                activebackground="#E0E0E0",
+                activeforeground="#000000",
+                font=("MS Sans Serif", 9),
+                bd=2,
+                relief=tk.RAISED,
+                width=8,
+                command=on_close
+            )
+            ok_btn.pack(anchor=tk.CENTER)
+            
+            self._start_physical_shake(range_px=10)
+            
+        except Exception as e:
+            print(f"[Fake Error Popup Error] {e}")
 
     def _safe_destroy_widget(self, widget):
         try:
@@ -3583,10 +4093,19 @@ class YandereGameApp:
             self.trigger_glitch_effect()
 
         elif action == "TRIGGER_STROBE":
-            self._psychic_strobe(300)
+            self._psychic_strobe(300, 1300)
 
         elif action == "TRIGGER_BARRAGE":
-            self._start_obsessive_barrage(1.5)
+            self._start_obsessive_barrage(1.0)
+
+        elif action == "TRIGGER_MELT_OVERLAY":
+            self._trigger_melt_overlay(1200)
+
+        elif action == "TRIGGER_MOUSE_TREMOR":
+            self._trigger_mouse_tremor(1500)
+
+        elif action == "TRIGGER_FAKE_ERROR":
+            self._trigger_fake_error_popup()
 
         elif action == "TRIGGER_MELTDOWN":
             self._start_widget_meltdown(1.5)
