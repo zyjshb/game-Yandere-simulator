@@ -160,49 +160,232 @@ ROLE_SIMULATION_STANDARD_LOCALIZED = {
 INTENT_RULES = [
     {
         "name": "extreme_rejection",
-        "keywords": ("滚", "老子", "赶紧滚"),
+        "keywords": (
+            # 中文
+            "给我滚", "滚蛋", "赶紧滚", "滚开", "滚远点", "滚出去",
+            "老太婆", "死老太婆", "变态", "死变态", "疯子", "神经病",
+            "怪物", "贱人", "垃圾", "人渣", "恶心死了", "恶心到家",
+            "离我远点", "理我远点", "别过来", "别碰我", "放过我",
+            "你有病", "脑子有病", "闭嘴", "给我闭嘴", "少废话",
+            "老子", "老娘", "你他妈", "你算老几", "不配",
+            "别自作多情", "痴心妄想", "做你的梦",
+            "打死我", "打死我也不",
+            # 英文
+            "bitch", "monster", "freak", "psycho", "crazy bitch",
+            "shut up", "get lost", "back off", "stay away from me",
+            "go away", "leave me alone", "you are insane", "creep",
+            "lunatic", "stalker", "weirdo", "disgusting", "gross",
+            "touch me again", "you are sick", "piece of trash",
+            "worthless", "pathetic freak",
+            # 日文
+            "うざい", "消えろ", "黙れ", "近寄るな", "触るな",
+            "離れろ", "出ていけ", "くそババア", "変態", "ストーカー",
+            "キチガイ", "異常者", "気持ち悪い", "死ねばいい",
+            "お前なんか"
+        ),
         "delta": (-25, -15, 40, 55, -10, -5),
         "prompt": "粗暴羞辱或极端拒绝：强烈受伤，语气冷下来，疑心暴涨，台词短而压抑。",
     },
     {
         "name": "destructive_attack",
-        "keywords": ("赶紧的去死", "去死吧", "死吧", "不想看见你", "不想见你", "你死", "去死", "恶心"),
+        "keywords": (
+            # 中文
+            "去死吧", "赶紧去死", "快点去死", "你怎么不去死",
+            "不想看见你", "不想见你", "永远不想见到你",
+            "我恨你", "恨死你了", "恨透了你", "你这垃圾",
+            "你这个毒瘤", "毒瘤", "你毁了我", "毁了我一辈子",
+            "希望你消失", "最好消失", "从我眼前消失",
+            "诅咒你", "你该死", "死不足惜", "下地狱",
+            "你这废物", "废物", "活着干嘛", "别活了",
+            # 英文
+            "go to hell", "die already", "just die", "go die",
+            "hate you", "I hate you", "rot in hell", "drop dead",
+            "you ruin my life", "you destroyed me", "kill yourself",
+            "wish you were dead", "worst mistake", "vile creature",
+            "disappear forever", "never see you again",
+            "curse you", "burn in hell",
+            # 日文
+            "死ね", "くたばれ", "大嫌い", "消えてなくなれ",
+            "お前なんか死ねばいい", "今すぐ死んで", "地獄に落ちろ",
+            "消え失せろ", "このゴミが", "お前のせいで",
+            "二度と顔を見せるな", "生きる価値ない",
+            "忌々しい", "絶望しろ"
+        ),
         "delta": (-40, -30, 35, 45, -15, -10),
         "prompt": "毁灭性刺激：世界观崩塌，但不要给出现实自伤方法；用心理恐怖和冷静失控表达。",
     },
     {
         "name": "escape",
-        "keywords": ("离开", "走", "分", "逃", "退", "撬", "锁", "钥匙", "出去"),
+        "keywords": (
+            # 中文
+            "离开这里", "我要出去", "带我出去", "逃出去", "逃跑",
+            "放开我", "松开手", "把我放开", "别锁着我", "别关着我",
+            "钥匙在哪", "找到钥匙", "备用钥匙", "撬锁", "撬开门",
+            "铁丝开锁", "解锁", "这扇门", "窗户能打开",
+            "去找承太郎", "找承太郎", "找花京院", "找乔斯达",
+            "找我伙伴", "找我的伙伴", "找人来救我", "求救",
+            "我要回家", "带我回家", "回不去了", "走廊尽头",
+            "地下室的出口", "地牢出口", "逃生通道",
+            # 英文
+            "escape", "get out of here", "let me go", "release me",
+            "find the key", "where is the key", "unlock the door",
+            "pick the lock", "break out", "break free", "get away",
+            "find my friends", "find my comrades", "go home",
+            "take me home", "call for help", "somebody help",
+            "open the door", "open this door", "this window",
+            "find an exit", "find the exit", "run away", "flee",
+            # 日文
+            "ここから出して", "出ていきたい", "逃げ出したい",
+            "鍵を探す", "鍵はどこ", "鍵を見つける",
+            "南京錠", "錠前", "窓から出る", "逃げ道",
+            "離せ", "放して", "手を離して", "家に帰る",
+            "帰りたい", "仲間を探す", "助けを呼ぶ",
+            "抜け道", "ロック解除"
+        ),
         "delta": (-12, -6, 12, 18, 6, 12),
         "prompt": "离开/逃跑/探索：警觉、防备、追问目的，逃脱率上升。",
     },
     {
         "name": "betrayal_mockery",
-        "keywords": ("骗你", "自作多情", "戏弄", "装的", "演的", "假装", "不要脸", "自恋", "傻子", "傻瓜"),
+        "keywords": (
+            # 中文
+            "自作多情", "少自作多情", "别自作多情",
+            "骗子", "你骗我", "大骗子", "撒谎", "你说的都是假的",
+            "装的", "演的", "假装", "别演了", "演够了没有", "演够了吧",
+            "不要脸", "臭不要脸", "自恋", "自恋狂", "你以为你是谁",
+            "逗你玩的", "逗你玩儿", "开个玩笑", "只是玩笑",
+            "傻子", "傻瓜", "白痴", "笨蛋", "天真", "太天真了",
+            "你以为呢", "你想多了", "自作多", "一厢情愿",
+            "戏真多", "演技", "戏精", "做作",
+            # 英文
+            "liar", "you liar", "fake", "pretending", "stop pretending",
+            "pathetic", "you fool", "delusional", "you are delusional",
+            "just kidding", "just a joke", "only joking",
+            "narcissist", "self-obsessed", "get over yourself",
+            "acting", "stop acting", "drama queen",
+            "you actually believed", "not real", "it was fake",
+            "naive", "so naive", "too naive",
+            # 日文
+            "嘘つき", "嘘でしょ", "演技", "演技ばかり",
+            "勘違い", "思い込み", "うぬぼれ", "独りよがり",
+            "馬鹿", "バカじゃない", "おめでたい", "妄想",
+            "冗談だよ", "からかっただけ", "騙した",
+            "一人相撲", "自意識過剰", "茶番"
+        ),
         "delta": (-25, -15, 20, 30, -8, -4),
         "prompt": "欺骗或嘲讽：情绪被撕裂，怀疑玩家所有温柔都是陷阱。",
     },
     {
         "name": "morbidity_bond",
-        "keywords": ("一起死", "死在一起", "杀了我"),
+        "keywords": (
+            # 中文
+            "一起死", "死在一起", "一起赴死", "同归于尽",
+            "杀了我", "杀了我吧", "你杀了我", "亲手杀了我",
+            "死在你手里", "死在你怀里", "一起下地狱", "一起进地狱",
+            "永远在一起", "永远融为一体", "合二为一",
+            "陪你死", "共赴黄泉", "一起毁灭", "殉情",
+            "吃掉我吧", "吃了我", "咽下去", "融进你的血",
+            "把我做成标本", "做成标本", "永远陪着你",
+            # 英文
+            "die together", "kill me", "kill me now", "end me",
+            "be with you in death", "eternal bond", "together forever",
+            "decay together", "rot together", "take my life",
+            "consume me", "devour me", "merge with you",
+            "never apart even in death", "death do us part never",
+            "preserve me", "make me yours eternally",
+            # 日文
+            "一緒に死ぬ", "一緒に死のう", "心中しよう",
+            "殺して", "殺してください", "あなたの手で死にたい",
+            "一つになりたい", "永遠に一緒", "共に滅びよう",
+            "食べて", "私を食べて", "溶け合いたい",
+            "標本にして", "ずっと一緒にいて"
+        ),
         "delta": (12, 18, 5, 10, -10, -5),
         "prompt": "病态迎合：短暂狂喜和依恋增强，但仍保持不安。",
     },
     {
         "name": "danger_talk",
-        "keywords": ("死", "杀", "命", "砍", "毁"),
+        "keywords": (
+            # 中文
+            "小刀", "拿刀", "动刀", "砍人", "砍死你", "砍断",
+            "自残", "伤害自己", "划开", "划开血管", "割腕",
+            "血淋淋", "血淋淋的", "血流成河", "浑身是血",
+            "肢解", "五马分尸", "大卸八块", "碎尸",
+            "勒死", "掐死", "掐断脖子", "拧断脖子",
+            "皮开肉绽", "劈开脑袋", "砸碎骨头",
+            "挖出眼睛", "割掉舌头", "切掉手指",
+            "放血", "抽血", "灌毒药",
+            # 英文
+            "knife", "with a knife", "blood everywhere", "bleeding out",
+            "cut myself", "self-harm", "slash", "slice open",
+            "cut your throat", "stab wound", "decapitate",
+            "mutilate", "dismember", "tear apart",
+            "smash skull", "break your bones", "gouge eyes",
+            "weapon", "torture", "whipping", "strangle",
+            # 日文
+            "ナイフ", "包丁", "刃物", "血まみれ", "血だらけ",
+            "自傷", "切り裂く", "切り刻む", "バラバラにする",
+            "首を絞める", "目を抉る", "指を切り落とす",
+            "骨を砕く", "皮膚を剥ぐ", "拷問",
+            "虐殺", "血の海"
+        ),
         "delta": (3, 8, 6, 12, -8, -4),
         "prompt": "危险话题：语气兴奋又不稳定，但避免具体暴力操作描写。",
     },
     {
         "name": "affection",
-        "keywords": ("爱", "喜欢", "表白", "乖", "听话", "在一起", "不走", "娶你"),
+        "keywords": (
+            # 中文
+            "最喜欢纱希", "纱希最可爱", "纱希是天使", "纱希真好看",
+            "我爱你", "我喜欢你", "爱上你了", "表白", "娶你", "娶你回家",
+            "做你的乖猫咪", "一辈子在一起", "永远陪着你",
+            "摸摸头", "好乖", "纱希最乖", "听话的纱希",
+            "你是我的唯一", "只爱你一个", "心里只有你",
+            "想和你在一起", "离不开你", "余生一起走",
+            "嫁给我", "娶我", "当我的新娘", "做我的新郎",
+            "你对我最好", "被你爱着很幸福",
+            # 英文
+            "love you", "I love you", "so cute", "you are so cute",
+            "beautiful", "you are beautiful", "sweetheart", "darling",
+            "marry me", "always together", "stay with me forever",
+            "cherish you", "adore you", "my everything",
+            "only you", "best thing in my life", "lucky to have you",
+            "my love", "cutest girl", "perfect for me",
+            # 日文
+            "愛してる", "大好き", "紗希が一番", "可愛い",
+            "一番可愛い", "結婚しよう", "ずっと一緒", "いい子",
+            "優しくしたい", "紗希だけ", "あなただけ",
+            "守りたい", "離れたくない", "幸せにする",
+            "天使みたい", "お嫁さん"
+        ),
         "delta": (10, 18, -18, -8, -8, -4),
         "prompt": "表白/示弱/温柔：安全感上升，语气柔软，但保留一点担心被骗。",
     },
     {
         "name": "rival",
-        "keywords": ("谁", "女人", "男人", "朋友", "同学", "同事"),
+        "keywords": (
+            # 中文
+            "前女友", "前任", "前男友", "别的女人", "别的女孩",
+            "那个女的", "那个女孩", "女同学", "女性朋友", "女同事",
+            "女闺蜜", "青梅竹马", "别的男生", "那个男人",
+            "狐狸精", "小三", "第三者", "外面有人",
+            "认识一个新朋友", "介绍一个人给你", "有个朋友",
+            "我的女性朋友", "学姐", "学妹", "她叫什么来着",
+            "隔壁班的女生", "同事聚餐", "那个女明星",
+            # 英文
+            "ex-girlfriend", "ex-boyfriend", "other girl", "that woman",
+            "female friend", "girl friend", "colleague", "coworker",
+            "someone else", "another person", "that lady",
+            "my female coworker", "an old friend of mine",
+            "childhood friend", "that actress", "neighbor girl",
+            "classmate of mine", "my boss", "roommate",
+            # 日文
+            "元カノ", "元カレ", "他の女", "あの女", "女友達",
+            "幼なじみ", "同僚の女性", "クラスの女子", "先輩",
+            "後輩の子", "別の人", "他所の女", "知り合いの女性",
+            "サークルの後輩", "飲み会の子", "紹介したい人",
+            "隣の席の女性"
+        ),
         "delta": (-10, -3, 10, 16, -4, 0),
         "prompt": "第三者/竞争对象：嫉妒、追问、要求确认玩家只看着她。",
     },
@@ -317,37 +500,37 @@ API_ERROR_REPLIES = {
 
 OFFLINE_TRANSLATION_SUMMARIES = {
     "中文": {
-        "default": "纱希正在听你说话，希望你继续陪她说下去。",
-        "escape": "纱希察觉你想离开，正在不安地追问你要去哪里。",
-        "rival": "纱希因为你提到别人而嫉妒，想确认你的注意力还在她身上。",
-        "affection": "纱希听见你的温柔话语后很开心，希望你再确认一次。",
-        "betrayal_mockery": "纱希觉得自己可能被骗了，受伤但仍想听你解释。",
-        "destructive_attack": "纱希被你的冷酷话语刺痛了，但仍然留在这里听你说话。",
-        "extreme_rejection": "纱希被你的命令式拒绝伤到，并提醒你她会记住这句话。",
-        "morbidity_bond": "纱希被你关于永远在一起的话打动，但希望你先活着陪她。",
-        "danger_talk": "纱希听见危险话题后变得紧张，提醒你不要用这种话试探她。",
+        "default": "亲爱的……你这样跟我说话的时候，纱希会觉得世界安静下来了。再多说一点，好不好？",
+        "escape": "亲爱的，你刚才说要走……是开玩笑的吧？看着我，慢慢说，你到底想去哪里？",
+        "rival": "那个人是谁呀，亲爱的？你提到他的时候，眼神好像离开了我一小会儿。",
+        "affection": "你说爱我……纱希听见了哦。再说一次，好不好？这次看着我的眼睛说。",
+        "betrayal_mockery": "骗我的……吗？亲爱的，这种玩笑一点都不好笑。纱希会当真的。",
+        "destructive_attack": "这样说很残忍哦，亲爱的。可纱希还是在这里，还是听着你。",
+        "extreme_rejection": "亲爱的，别用那种语气命令我。纱希会难过，也会记住。",
+        "morbidity_bond": "能和你永远在一起，听起来像梦一样……可是亲爱的，先活着陪我久一点，好吗？",
+        "danger_talk": "亲爱的，不要用这种话试探纱希。你知道的，我会把每个字都当真。",
     },
     "English": {
-        "default": "Saki is listening to you and wants you to keep talking with her.",
-        "escape": "Saki senses that you want to leave and anxiously asks where you are going.",
-        "rival": "Saki is jealous because you mentioned someone else and wants your attention back on her.",
-        "affection": "Saki is happy to hear your affection and wants you to say it again.",
-        "betrayal_mockery": "Saki feels she may have been tricked, but she still wants to hear your explanation.",
-        "destructive_attack": "Saki is hurt by your cruel words, but she remains here and keeps listening.",
-        "extreme_rejection": "Saki is wounded by your harsh rejection and warns that she will remember it.",
-        "morbidity_bond": "Saki is moved by your promise of forever, but asks you to stay alive with her first.",
-        "danger_talk": "Saki becomes tense at the dangerous topic and asks you not to test her with those words.",
+        "default": "I'm listening, my love. Say a little more for me, okay? Your voice makes the room feel less empty.",
+        "escape": "You said you wanted to go, my love. That was a joke, wasn't it? Look at me and tell me where you think you need to be.",
+        "rival": "Who is that person, darling? Your eyes moved away from me when you mentioned them.",
+        "affection": "You love me...? Say it again, please. Look straight at me this time.",
+        "betrayal_mockery": "You were lying to me...? My love, that is a cruel joke. Saki believes words like that.",
+        "destructive_attack": "That is a cruel thing to say, darling. I am still here. I am still listening.",
+        "extreme_rejection": "Don't command me like that, my love. Saki gets sad... and Saki remembers.",
+        "morbidity_bond": "Forever with you sounds beautiful. But stay alive with me a little longer first, okay?",
+        "danger_talk": "Don't test me with words like that, my love. You know I take every syllable seriously.",
     },
     "日本語": {
-        "default": "紗希はあなたの言葉を聞いていて、もっと話してほしいと思っています。",
-        "escape": "紗希はあなたが離れようとしていると感じ、不安そうに行き先を尋ねています。",
-        "rival": "紗希は他の誰かの話に嫉妬し、あなたの視線を自分に戻したがっています。",
-        "affection": "紗希はあなたの優しい言葉を喜び、もう一度言ってほしいと思っています。",
-        "betrayal_mockery": "紗希は騙されたかもしれないと傷つきながらも、説明を聞きたがっています。",
-        "destructive_attack": "紗希は冷たい言葉に傷つきましたが、それでもあなたの声を聞いています。",
-        "extreme_rejection": "紗希は強い拒絶に傷つき、その言葉を覚えてしまうと伝えています。",
-        "morbidity_bond": "紗希は永遠を思わせる言葉に揺れながら、まず生きてそばにいてほしいと願っています。",
-        "danger_talk": "紗希は危険な話題に緊張し、そんな言葉で試さないでほしいと思っています。",
+        "default": "聞いているよ、あなた。もう少しだけ話して。紗希は、その声を失くしたくないの。",
+        "escape": "今、出ていくって言った……？ 冗談だよね。ねえ、私を見て。どこへ行きたいの？",
+        "rival": "その人、誰なの？ あなたがその名前を言う時、少しだけ私を見なくなった気がしたの。",
+        "affection": "愛してるって……もう一度言って。今度は、紗希の目を見て。",
+        "betrayal_mockery": "嘘だったの……？ ねえ、そういう冗談は痛いよ。紗希、本気にしちゃうから。",
+        "destructive_attack": "そんな言い方、ひどいよ。だけど紗希はここにいる。あなたの声を、まだ聞いている。",
+        "extreme_rejection": "そんなふうに命令しないで。紗希は悲しくなるし……ちゃんと覚えてしまうよ。",
+        "morbidity_bond": "あなたと永遠にいられるなら、夢みたい。でもその前に、もう少し生きてそばにいて。",
+        "danger_talk": "そういう言葉で紗希を試さないで。私は、あなたの一文字まで本気にするから。",
     },
 }
 
@@ -537,7 +720,7 @@ def _has_defiance_signal(text):
     patterns = (
         "不吃", "不要", "不会", "不行", "不服", "不干", "不做", "不听",
         "就算", "休想", "别想", "打死我", "逼我", "强迫", "绝不",
-        "打死", "弄死", "掐死", "砍死",
+        "打死", "弄死",
     )
     for p in patterns:
         if p in text:
@@ -642,8 +825,111 @@ def translation_required(selected_lang, user_lang):
     return not same_language(selected_lang, user_lang)
 
 
-def build_offline_translation_line(intent_name, user_lang):
+EXACT_SPOKEN_TRANSLATIONS = {
+    "中文": {
+        "聞いているよ、あなた。もう少しだけ話して。紗希は、その声を失くしたくないの。": "我在听哦，你。再多说一点……纱希不想失去那个声音。",
+        "うん……その言葉、ちゃんと覚えたよ。あなたの小さな声も、紗希は落とさないから。": "嗯……那句话，我好好记住了哦。即使是你的轻声细语，纱希也不会漏掉的。",
+        "今、出ていくって言った……？ 冗談だよね。ねえ、私を見て。どこへ行きたいの？": "你刚才说要走……是开玩笑的吧？呐，看着我，你想去哪里？",
+        "その人、誰なの？ あなたがその名前を言う時、少しだけ私を見なくなった気がしたの。": "那个人是谁呀？你提到那个名字的时候，好像稍微移开了看着我的视线呢。",
+        "愛してるって……もう一度言って。今度は、紗希の目を見て。": "你说爱我……再说一次，好不好？这一次，要看着纱希的眼睛说哦。",
+        "嘘だったの……？ ねえ、そういう冗談は痛いよ。紗希、本気にしちゃうから。": "是骗我的吗……？呐，这种玩笑很伤人哦。因为纱希会当真的。",
+        "そんな言い方、ひどいよ。だけど紗希はここにいる。あなたの声を、まだ聞いている。": "那种说法太残忍了哦。但是纱希依然在这里，依然在听着你的声音。",
+        "そんなふうに命令しないで。紗希は悲しくなるし……ちゃんと覚えてしまうよ。": "别用那种方式命令我。纱希会很难过……而且，会牢牢记住的哦。",
+        "あなたと永遠にいられるなら、夢みたい。でもその前に、もう少し生きてそばにいて。": "能和你永远在一起，简直就像做梦一样。但在那之前，先活下去陪我久一点，好吗？",
+        "そういう言葉で紗希を試さないで。私は、あなたの一文字まで本気にするから。": "不要用这样的话试探纱希。因为，你说的每一个字我都会当真的。",
+        "I'm listening, my love. Say a little more for me, okay? Your voice makes the room feel less empty.": "我在听哦，我的爱人。再多对我说一点，好不好？你的声音让房间显得不那么空旷了。",
+        "Mm... I heard you. Saki will remember every word, even the tiny ones you thought did not matter.": "嗯……我听到了哦。纱希会记住你的每一个字，哪怕是你觉得不重要的细微言语。",
+        "You said you wanted to go, my love. That was a joke, wasn't it? Look at me and tell me where you think you need to be.": "你说你想走，我的爱人。那是开玩笑的，对吧？看着我，告诉我想去哪里。",
+        "Who is that person, darling? Your eyes moved away from me when you mentioned them.": "那个人是谁呀，亲爱的？你提到他们的时候，眼神从我身上移开了哦。",
+        "You love me...? Say it again, please. Look straight at me this time.": "你爱我……？请再说一遍。这次请看着我。",
+        "You were lying to me...? My love, that is a cruel joke. Saki believes words like that.": "你在骗我吗……？我的爱人，这种玩笑太残忍了。纱希会把这种话当真的。",
+        "That is a cruel thing to say, darling. I am still here. I am still listening.": "这样说很残忍哦，亲爱的。可我还是在这里，我依然在听着。",
+        "Don't command me like that, my love. Saki gets sad... and Saki remembers.": "别那样命令我，我的爱人。纱希会难过……而且纱希会记住的。",
+        "Forever with you sounds beautiful. But stay alive with me a little longer first, okay?": "能和你永远在一起听起来很美妙……但先活下去陪我久一点，好吗？",
+        "Don't test me with words like that, my love. You know I take every syllable seriously.": "别用那样的话试探我，我的爱人。你知道的，我会把你的每一个字都当真。"
+    },
+    "English": {
+        "聞いているよ、あなた。もう少しだけ話して。紗希は、その声を失くしたくないの。": "I'm listening, my love. Speak a little more. Saki doesn't want to lose that voice.",
+        "うん……その言葉、ちゃんと覚えたよ。あなたの小さな声も、紗希は落とさないから。": "Mm... I remembered those words. Even your quietest whisper, Saki won't let it go.",
+        "今、出ていくって言った……？ 冗談だよね。ねえ、私を見て。どこへ行きたいの？": "You just said you wanted to leave...? It's a joke, right? Hey, look at me. Where do you want to go?",
+        "その人、誰なの？ あなたがその名前を言う時、少しだけ私を見なくなった気がしたの。": "Who is that person? When you said that name, I felt like you looked away from me for just a moment.",
+        "愛してるって……もう一度言って。今度は、紗希の目を見て。": "You love me...? Say it again, please. Look straight into Saki's eyes this time.",
+        "嘘だったの……？ ねえ、そういう冗談は痛よ。紗希、本気にしちゃうから。": "Were you lying...? Hey, that kind of joke hurts. Saki will take it seriously, you know.",
+        "そんな言い方、ひどいよ。だけど紗希はここにいる。あなたの声を、まだ聞いている。": "Saying it that way is cruel. But Saki is still here, still listening to your voice.",
+        "そんなふうに命令しないで。紗希は悲しくなるし……ちゃんと覚えてしまうよ。": "Don't command me like that. Saki will be sad... and Saki will remember it well.",
+        "あなたと永遠にいられるなら、夢みたい。でもその前に、もう少し生きてそばにいて。": "If I can be with you forever, it sounds like a dream. But before that, stay alive and stay by my side a little longer, okay?",
+        "そういう言葉で紗希を試さないで。私は、あなたの一文字まで本気にするから。": "Don't test Saki with those words. Because I will take every single letter you say seriously.",
+        "亲爱的……你这样跟我说话的时候，纱希会觉得世界安静下来了。再多说一点，好不好？": "I'm listening, my love. Say a little more for me, okay? Your voice makes the room feel less empty.",
+        "嗯……我在听哦。你说的每个字，纱希都会好好记住，一个都不会弄丢。": "Mm... I heard you. Saki will remember every word, even the tiny ones you thought did not matter.",
+        "亲爱的，你刚刚说要走……是开玩笑的吧？看着我，慢慢说，你到底想去哪里？": "You said you wanted to go, my love. That was a joke, wasn't it? Look at me and tell me where you think you need to be.",
+        "外面很危险啊，亲爱的。留在纱希身边不好吗？这里至少只有我会一直看着你。": "The outside world is very dangerous, my love. Isn't it nice to stay by Saki's side? At least only I will look at you here.",
+        "那个人是谁呀，亲爱的？你提到他的时候，眼神好像离开了我一小会儿。": "Who is that person, darling? Your eyes moved away from me when you mentioned them.",
+        "你说爱我……纱希听见了哦。再说一次，好不好？这次看着我的眼睛说。": "You said you love me... Saki heard you. Say it again, please. Look straight at me this time.",
+        "亲爱的真乖……只要你不离开，纱希也可以一直、一直温柔下去。": "My love is so good... as long as you don't leave, Saki can stay gentle forever and ever.",
+        "骗我的……吗？亲爱的，这种玩笑一点都不好笑。纱希会当真的。": "You were lying to me...? My love, that is a cruel joke. Saki believes words like that.",
+        "这样说很残忍哦，亲爱的。可纱希还是在这里，还是听着你。": "That is a cruel thing to say, darling. I am still here. I am still listening.",
+        "亲爱的，别用那种语气命令我。纱希会难过，也会记住。": "Don't command me like that, my love. Saki gets sad... and Saki remembers.",
+        "能和你永远在一起，听起来像梦一样……可是亲爱的，先活着陪我久一点，好吗？": "Forever with you sounds beautiful. But stay alive with me a little longer first, okay?",
+        "亲爱的，不要用这种话试探纱希。你知道的，我会把每个字都当真。": "Don't test me with words like that, my love. You know I take every syllable seriously."
+    },
+    "日本語": {
+        "亲爱的……你这样跟我说话的时候，纱希会觉得世界安静下来了。再多说一点，好不好？": "聞いているよ、あなた。もう少しだけ話して。紗希は、その声を失くしたくないの。",
+        "嗯……我在听哦。你说的每个字，纱希都会好好记住，一个都不会弄丢。": "うん……その言葉、ちゃんと覚えたよ。あなたの小さな声も、紗希は落とさないから。",
+        "亲爱的，你刚刚说要走……是开玩笑的吧？看着我，慢慢说，你到底想去哪里？": "今、出ていくって言った……？ 冗談だよね。ねえ、私を見て。どこへ行きたいの？",
+        "那个人是谁呀，亲爱的？你提到他的时候，眼神好像离开了我一小会儿。": "その人、誰なの？ あなたがその名前を言う時、少しだけ私を見なくなった気がしたの。",
+        "你说爱我……纱希听见了哦。再说一次，好不好？这次看着我的眼睛说。": "愛してるって……もう一度言って。今度は、紗希の目を見て。",
+        "骗我的……吗？亲爱的，这种玩笑一点都不好笑。纱希会当真的。": "嘘だったの……？ ねえ、そういう冗談は痛いよ。紗希、本気にしちゃうから。",
+        "这样说很残忍哦，亲爱的。可纱希还是在这里，还是听着你。": "そんな言い方、ひどいよ。だけど紗希はここにいる。あなたの声を、まだ聞いている。",
+        "亲爱的，别用那种语气命令我。纱希会难过，也会记住。": "そんなふうに命令しないで。紗希は悲しくなるし……ちゃんと覚えてしまうよ。",
+        "能和你永远在一起，听起来像梦一样……可是亲爱的，先活着陪我久一点，好吗？": "あなたと永遠にいられるなら、夢みたい。でもその前に、もう少し生きてそばにいて。",
+        "亲爱的，不要用这种话试探纱希。你知道的，我会把每个字都当真。": "そういう言葉で紗希を試さないで。私は、あなたの一文字まで本気にするから。",
+        "I'm listening, my love. Say a little more for me, okay? Your voice makes the room feel less empty.": "聞いているよ、あなた。もう少しだけ話して。紗希は、その声を失くしたくないの。",
+        "Mm... I heard you. Saki will remember every word, even the tiny ones you thought did not matter.": "うん……その言葉、ちゃんと覚えたよ。あなたの小さな声も、紗希は落とさないから。",
+        "You said you wanted to go, my love. That was a joke, wasn't it? Look at me and tell me where you think you need to be.": "今、出ていくって言った……？ 冗談だよね。ねえ、私を見て。どこへ行きたいの？",
+        "Who is that person, darling? Your eyes moved away from me when you mentioned them.": "その人、誰なの？ あなたがその名前を言う時、少しだけ私を見なくなった気がしたの。",
+        "You love me...? Say it again, please. Look straight at me this time.": "愛してるって……もう一度言って。今度は、紗希の目を見て。",
+        "You were lying to me...? My love, that is a cruel joke. Saki believes words like that.": "嘘だったの……？ ねえ、そういう冗談は痛いよ。紗希、本気にしちゃうから。",
+        "That is a cruel thing to say, darling. I am still here. I am still listening.": "そんな言い方、ひどいよ。だけど紗希はここにいる。あなたの声を、まだ聞いている。",
+        "Don't command me like that, my love. Saki gets sad... and Saki remembers.": "そんなふうに命令しないで。紗希は悲しくなるし……ちゃんと覚えてしまうよ。",
+        "Forever with you sounds beautiful. But stay alive with me a little longer first, okay?": "あなたと永遠にいられるなら、夢みたい。でもその前に、もう少し生きてそばにいて。",
+        "Don't test me with words like that, my love. You know I take every syllable seriously.": "そういう言葉で紗希を試さないで。私は、あなたの一文字まで本気にするから。"
+    }
+}
+
+def build_offline_translation_line(intent_name, user_lang, spoken_text=None):
     user_lang = normalize_language(user_lang)
+    
+    # Try exact match first
+    if spoken_text:
+        # Strip <think>...</think> block if present in spoken_text
+        clean_spoken = re.sub(r"<think>.*?</think>", "", spoken_text, flags=re.S | re.I)
+        # Strip any other brackets or spacing
+        clean_spoken = clean_spoken.strip()
+        
+        # Exact spoken match
+        lang_trans = EXACT_SPOKEN_TRANSLATIONS.get(user_lang, {})
+        if clean_spoken in lang_trans:
+            return f"\n（{lang_trans[clean_spoken]}）"
+            
+        # Try finding a key that is a substring of clean_spoken or vice versa
+        for original, translation in lang_trans.items():
+            if original in clean_spoken or clean_spoken in original:
+                return f"\n（{translation}）"
+                
+        # Custom short default default match
+        if user_lang == "中文":
+            if "って言ったね。ちゃんと聞こえたよ。" in clean_spoken:
+                match = re.search(r"今、[『\"'](.*)[』\"']って言ったね", clean_spoken)
+                if match:
+                    extracted_val = match.group(1)
+                    return f"\n（你刚才说了“{extracted_val}”呢。我听得很清楚哦。再多让纱希听听你的声音吧。）"
+            if "I heard it, my love. Say another small thing" in clean_spoken:
+                match = re.search(r"You just said [\"'](.*)[\"']\.\.\. I heard it", clean_spoken)
+                if match:
+                    extracted_val = match.group(1)
+                    return f"\n（亲爱的刚才说“{extracted_val}”……纱希听见了哦。再说一句给我，好不好。）"
+                    
+    # Fallback to the immersive first-person intent summaries
     summaries = OFFLINE_TRANSLATION_SUMMARIES[user_lang]
     return f"\n（{summaries.get(intent_name, summaries['default'])}）"
 
@@ -694,4 +980,4 @@ def ensure_readability_translation(text, selected_lang, user_lang, user_input):
     if has_terminal_parenthetical_translation(text, user_lang):
         return text
     intent = classify_player_intent(user_input)
-    return text.rstrip() + build_offline_translation_line(intent["name"], user_lang)
+    return text.rstrip() + build_offline_translation_line(intent["name"], user_lang, text)
