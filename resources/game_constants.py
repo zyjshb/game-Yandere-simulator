@@ -14,9 +14,9 @@ import random
 
 GPT_SOVITS_URL = "http://127.0.0.1:9880"
 
-REFER_WAV_PATH = "D:\\行秋\\vido\\xinqiu.WAV_0000456000_0000607680.wav"
+REFER_WAV_PATH = "models/hua/huahuo.wav_0000061760_0000188480.wav"
 
-PROMPT_TEXT = "独向昭谈至恶龙一阁著文章。"
+PROMPT_TEXT = "你要是有什么危险的差事要办，尽管来找我。"
 
 
 

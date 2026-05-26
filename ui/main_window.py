@@ -87,6 +87,74 @@ except ImportError:
 
 
 # ============================================================================
+#               Global Asynchronous Save/Load Slots Functions
+# ============================================================================
+_ACTIVE_APP_INSTANCE = None
+
+def save_slot1():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.save_slot1()
+
+def save_slot2():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.save_slot2()
+
+def save_slot3():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.save_slot3()
+
+def save_slot4():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.save_slot4()
+
+def save_slot5():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.save_slot5()
+
+def load_slot1():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.load_slot1()
+
+def load_slot2():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.load_slot2()
+
+def load_slot3():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.load_slot3()
+
+def load_slot4():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.load_slot4()
+
+def load_slot5():
+    if _ACTIVE_APP_INSTANCE:
+        _ACTIVE_APP_INSTANCE.load_slot5()
+
+
+DEFAULT_LANGUAGE_VOICES = {
+    "中文": {
+        "refer_wav_path": "models/hua/huahuo.wav_0000061760_0000188480.wav",
+        "prompt_text": "你要是有什么危险的差事要办，尽管来找我。",
+        "gpt_weights_path": "models/Huahuo_Yandere-e15.ckpt",
+        "sovits_weights_path": "models/Huahuo_Yandere_e10_s440.pth"
+    },
+    "日本語": {
+        "refer_wav_path": "models/mi/mita.wav_0000000000_0000261440.wav",
+        "prompt_text": "どうして、また、た、わかった、またか、中身が気になるんでしょ?",
+        "gpt_weights_path": "models/mita-e15.ckpt",
+        "sovits_weights_path": "models/mita_e10_s860.pth"
+    },
+    "English": {
+        "refer_wav_path": "models/hua/huahuo.wav_0000061760_0000188480.wav",
+        "prompt_text": "你要是有什么危险的差事要办，尽管来找我。",
+        "gpt_weights_path": "models/Huahuo_Yandere-e15.ckpt",
+        "sovits_weights_path": "models/Huahuo_Yandere_e10_s440.pth"
+    }
+}
+
+
+# ============================================================================
 #                            MainWindow Class
 # ============================================================================
 
@@ -123,9 +191,9 @@ class MainWindow:
         self.gpt_sovits_url = self.config.get("gpt_sovits_url", "http://127.0.0.1:9880")
         self.refer_wav_path = self.config.get(
             "refer_wav_path",
-            "D:\\行秋\\vido\\xinqiu.WAV_0000456000_0000607680.wav",
+            "models/hua/huahuo.wav_0000061760_0000188480.wav",
         )
-        self.prompt_text = self.config.get("prompt_text", "独向昭谈至恶龙一阁著文章。")
+        self.prompt_text = self.config.get("prompt_text", "你要是有什么危险的差事要办，尽量来找我。")
         self.gpt_weights_path = self.config.get("gpt_weights_path", "")
         self.sovits_weights_path = self.config.get("sovits_weights_path", "")
 
@@ -198,7 +266,31 @@ class MainWindow:
 
         # ---- window resize monitor / escape ----
         self.root.bind("<Configure>", self._on_window_resized)
-        self.root.bind("<Escape>", lambda e: self._emergency_clear_overlays())
+        self.root.bind("<Escape>", lambda e: self._on_esc_pressed())
+
+        # ---- set active app instance for global save/load access ----
+        global _ACTIVE_APP_INSTANCE
+        _ACTIVE_APP_INSTANCE = self
+
+        # ---- Bindings for save/load/character swap ----
+        self.root.bind("<Control-F1>", lambda e: self.save_slot1())
+        self.root.bind("<Control-F2>", lambda e: self.save_slot2())
+        self.root.bind("<Control-F3>", lambda e: self.save_slot3())
+        self.root.bind("<Control-F4>", lambda e: self.save_slot4())
+        self.root.bind("<Control-F5>", lambda e: self.save_slot5())
+        self.root.bind("<Alt-F1>", lambda e: self.load_slot1())
+        self.root.bind("<Alt-F2>", lambda e: self.load_slot2())
+        self.root.bind("<Alt-F3>", lambda e: self.load_slot3())
+        self.root.bind("<Alt-F4>", lambda e: self._on_alt_f4())
+        self.root.bind("<Alt-F5>", lambda e: self.load_slot5())
+        self.root.bind("<Control-Alt-c>", lambda e: self.toggle_character())
+        self.root.bind("<F12>", lambda e: self.toggle_character())
+
+        # ---- Bind entry keypress hijack for 4th wall break ----
+        self.entry_input.bind("<KeyPress>", self._on_entry_key_press)
+
+        # ---- Start background fourth-wall monitor ----
+        self._start_fourth_wall_monitor()
 
         # ---- splash screen ----
         self.root.after(100, self._show_splash_screen)
@@ -231,7 +323,116 @@ class MainWindow:
     # ========================================================================
 
     def _get_dynamic_system_prompt(self):
-        return get_system_prompt(self.state)
+        char_id = getattr(self.state, "current_char_id", "saki")
+        base_prompt = get_system_prompt(self.state)
+
+        # Check if it's a custom character from custom_characters.json
+        custom_chars = {}
+        if os.path.exists("custom_characters.json"):
+            try:
+                with open("custom_characters.json", "r", encoding="utf-8") as f:
+                    custom_chars = json.load(f)
+            except Exception:
+                pass
+
+        if char_id in custom_chars:
+            cdata = custom_chars[char_id]
+            name = cdata.get("name", "自定义角色")
+            age = cdata.get("age", "18")
+            personality = cdata.get("personality", "偏执、极度敏感的病娇，占有欲极强")
+            main_story = cdata.get("main_story", "将你关在密室里")
+            character_plot = cdata.get("character_plot", "只要你顺从就温柔，一旦你想走就爆发疯狂")
+            world_view = cdata.get("world_view", "阴暗冷酷的地牢")
+
+            prompt = base_prompt
+            prompt = prompt.replace("扮演纱希 Saki", f"扮演{name}")
+            prompt = prompt.replace("扮演纱希Saki", f"扮演{name}")
+            prompt = prompt.replace("扮演Saki", f"扮演{name}")
+            prompt = prompt.replace("扮演 纱希 Saki", f"扮演{name}")
+            prompt = prompt.replace("纱希 Saki", name)
+            prompt = prompt.replace("Saki", name)
+            prompt = prompt.replace("纱希", name)
+            prompt = prompt.replace("病娇少女", "病娇角色")
+            prompt = prompt.replace("她对玩家有强烈依恋", "该角色对玩家有强烈依恋")
+            prompt = prompt.replace("她对玩家", "该角色对玩家")
+            prompt = prompt.replace("她", "该角色")
+            prompt = prompt.replace("乖猫咪", "心爱之人")
+
+            injection = (
+                f"\n\n【自定义角色脑回路设定】\n"
+                f"- 角色姓名：{name}\n"
+                f"- 角色年龄：{age}\n"
+                f"- 角色性格：{personality}\n"
+                f"- 故事主线：{main_story}\n"
+                f"- 人物剧情：{character_plot}\n"
+                f"- 世界观：{world_view}\n\n"
+                f"注意：你现在扮演的是 {name}。你必须严格按照以上性格、背景、主线和剧情设定来进行模拟。"
+                f"你的台词和语气必须极其契合该角色，并保持高焦虑值/高疑心值时的偏执与病娇特质。"
+            )
+
+            if "【输出的结构具体示例" in prompt:
+                parts = prompt.split("【输出的结构具体示例")
+                prompt = parts[0] + injection + "\n\n【输出的结构具体示例" + parts[1]
+            elif "【OUTPUT STRUCTURE" in prompt:
+                parts = prompt.split("【OUTPUT STRUCTURE")
+                prompt = parts[0] + injection + "\n\n【OUTPUT STRUCTURE" + parts[1]
+            else:
+                prompt += injection
+        else:
+            filename = f"{char_id}_settings.txt"
+            if not os.path.exists(filename):
+                try:
+                    default_content = (
+                        "纱希是性格极端、敏感的病娇少女。她对玩家抱有病态的、毁灭性的爱与占有欲，对你的一言一行都会极度敏感地过度解读。\n"
+                        "她害怕失去你，表层温柔顺从，内里却充满强烈的不安全感与随时可能爆发的疯狂狂躁。\n"
+                        "如果发现你想逃跑或提起别人，她会瞬间黑化，用极度压抑或狂暴的态度面对你，甚至产生自毁与毁灭你的可怕念头。\n"
+                    )
+                    with open(filename, "w", encoding="utf-8") as f:
+                        f.write(default_content)
+                except Exception as e:
+                    print(f"[写入角色设定文件失败] {e}")
+
+            char_setting = ""
+            if os.path.exists(filename):
+                try:
+                    with open(filename, "r", encoding="utf-8") as f:
+                        char_setting = f.read().strip()
+                except Exception as e:
+                    print(f"[读取角色设定文件失败] {e}")
+
+            prompt = base_prompt
+            injection = f"\n\n【纱希专属性格作息设定】\n{char_setting}\n"
+            if "【输出的结构具体示例" in prompt:
+                parts = prompt.split("【输出的结构具体示例")
+                prompt = parts[0] + injection + "\n\n【输出的结构具体示例" + parts[1]
+            elif "【OUTPUT STRUCTURE" in prompt:
+                parts = prompt.split("【OUTPUT STRUCTURE")
+                prompt = parts[0] + injection + "\n\n【OUTPUT STRUCTURE" + parts[1]
+            else:
+                prompt += injection
+
+        # 2. Local insult emotional back-attack injection
+        if getattr(self.state, "local_insult_back_attack", False):
+            prompt += (
+                "\n\n【系统提示（强制要求）：玩家刚刚对你说了极具侮辱和排斥的话，请立刻对此表现出极其偏执、心碎和暴怒的情绪！"
+                "内心痛苦失控，说话时流露出受伤而疯狂的神色。同时，你末尾输出的 JSON 变化值（delta）中，"
+                "必须将好感度 favorability 设为大幅负数（例如 -20 到 -45 的负整数），将疑心度 suspicion 设为大幅正数（例如 +15 到 +40 的正整数）！】\n"
+            )
+            # Reset flag
+            self.state.local_insult_back_attack = False
+
+        # 3. Local submission emotional prompt injection
+        if getattr(self.state, "local_submission_prompt", False):
+            prompt += (
+                "\n\n【系统提示（玩家臣服顺从）：玩家的精神已被你彻底击垮，他不仅没有反抗你的键盘劫持，"
+                "反而主动发送了你逼迫他打出的执念之语！请立刻感到无与伦比的病态狂喜与彻底的征服满足感！"
+                "在回复中用最温柔、极度宠溺的语气安抚他，并且你末尾输出的 JSON 中，"
+                "必须将好感 favorability 设为大幅正数（如 +15 到 +30），将疑心 suspicion 设为大幅负数（如 -20 到 -40）！】\n"
+            )
+            # Reset flag
+            self.state.local_submission_prompt = False
+
+        return prompt
 
     # ========================================================================
     #  Audio init
@@ -257,8 +458,9 @@ class MainWindow:
             return
 
         def prober():
+            abs_refer_wav = os.path.abspath(self.refer_wav_path) if self.refer_wav_path else ""
             self.working_endpoint = probe_tts_endpoint(
-                self.gpt_sovits_url, self.refer_wav_path, self.prompt_text
+                self.gpt_sovits_url, abs_refer_wav, self.prompt_text
             )
 
         threading.Thread(target=prober, daemon=True).start()
@@ -475,6 +677,10 @@ class MainWindow:
             msg, color = data
             self.lbl_tts_status.config(text=msg, fg=color)
 
+        elif action == "TRIGGER_LOAD_WEIGHTS":
+            weight_type, filepath = data
+            self._async_load_weights(weight_type, filepath)
+
         elif action == "TRIGGER_SHAKE":
             self._start_physical_shake()
 
@@ -530,6 +736,58 @@ class MainWindow:
         user_text = self.entry_input.get().strip()
         if not user_text:
             return
+
+        # ---- 第四面墙劫持顺从判定 (Fourth-Wall Hijack Submission Check) ----
+        # If the input contains hijacked text keywords, it means the player has submitted to the fourth-wall hijack!
+        # Saki phrases: "你走不掉", "不许看", "只许看我"
+        hijack_phrases = ["你走不掉", "不许看", "只许看我", "の", "だ"]
+        if getattr(self, "input_hijacked", False) and (any(p in user_text for p in hijack_phrases) or len(user_text) >= 15):
+            print(f"[情绪反弹 - 臣服顺从] 玩家在劫持状态下发送了执念文字: '{user_text}'")
+            # 1. 疑心度瞬间暴跌 30点 (解脱劫持阈值)
+            self.state.suspicion = max(0, self.state.suspicion - 30)
+            # 2. 逃脱率降低 15点
+            self.state.escape_rate = max(0, self.state.escape_rate - 15)
+            # 3. 好感度增加 20点
+            self.state.favorability = min(100, self.state.favorability + 20)
+
+            # 4. 彻底重置键盘劫持状态，让玩家重获输入自由！
+            self.input_hijacked = False
+            self.hijack_char_index = 0
+            self.current_hijack_phrase = None
+
+            # 5. 触发专属性格 Prompt 反馈
+            self.state.local_submission_prompt = True
+
+            # 6. 同步刷新 UI 属性栏
+            self._sync_stats_to_gui()
+        else:
+            # ---- 逻辑层纠偏：情绪反向暴击 (Favorability Numerical Fix) ----
+            severe_insults = [
+                "滚", "老子", "呸", "赶紧滚", "去死", "去死吧", "死老太婆", "变态", "神经病",
+                "疯子", "贱人", "垃圾", "bitch", "fuck", "go away"
+            ]
+            cold_rejections = [
+                "不喜欢", "不爱", "讨厌", "嫌弃", "烦你", "真烦", "恨你", "不配",
+                "别碰我", "恶心", "离我远点", "不要你", "不要喜欢我", "hate you", "don't like"
+            ]
+
+            triggered = False
+            if any(kw in user_text for kw in severe_insults) or any(kw in user_text.lower() for kw in ["fuck", "bitch", "go away"]):
+                print(f"[情绪反向暴击 - 极端侮辱] 玩家输入: '{user_text}'")
+                self.state.favorability = max(0, self.state.favorability - 40)
+                self.state.suspicion = min(100, self.state.suspicion + 50)
+                self.state.local_insult_back_attack = True
+                triggered = True
+            elif any(kw in user_text for kw in cold_rejections) or any(kw in user_text.lower() for kw in ["hate you", "don't like", "dislike"]):
+                print(f"[情绪反向暴击 - 冷淡拒绝] 玩家输入: '{user_text}'")
+                self.state.favorability = max(0, self.state.favorability - 25)
+                self.state.suspicion = min(100, self.state.suspicion + 30)
+                self.state.local_insult_back_attack = True
+                triggered = True
+
+            if triggered:
+                # Update stats dynamically in the UI
+                self._sync_stats_to_gui()
 
         # ---- first-message language detection ----
         if not self.state.first_msg_detected:
@@ -644,22 +902,25 @@ class MainWindow:
             if current_session != self.state.dialogue_session_id or current_cycle != self.state.cycle_id:
                 return
 
-            # ---- carnage trigger words (step 6: refined Japanese keywords) ----
+            # ---- carnage trigger words (step 6: refined to truly extreme keywords ONLY) ----
+            # IMPORTANT: Do NOT include words Saki uses in normal dialogue (永远, 看着我, 你是我的, etc.)
+            # Only include genuinely violent/escape/extreme words that indicate critical plot moments
             danger_words_carnage = [
-                "小刀", "滚", "锁", "洗澡", "地下室", "老子", "永远", "看着我", "你是我的",
-                "forever", "escape", "look at me", "you are mine",
-                "私だけを見て", "こっちを見て", "逃げられない",
+                "小刀", "地下室", "杀", "死", "血", "尸", "毒",
+                "escape", "kill", "die", "blood",
+                "殺す", "死ぬ", "血", "逃げられない", "毒",
             ]
-            use_carnage = (self.state.suspicion >= 60) or any(
+            use_carnage = (self.state.suspicion >= 85) or any(
                 w in visual_text.lower() for w in danger_words_carnage
             )
 
             if use_carnage:
+                # Build polluted text for the overlapping scattered labels ONLY (not the chat log)
                 runes = ["☠", "☣", "⛥", "🩸", "🕇", "👹", "🔪", "⛓", "🖤", "⚰", "━", "..", "？"]
                 polluted_list = []
                 for char in visual_text:
                     polluted_list.append(char)
-                    if random.random() < 0.30:
+                    if random.random() < 0.12:
                         polluted_list.append(random.choice(runes))
                 polluted_text = "".join(polluted_list)
 
@@ -675,7 +936,9 @@ class MainWindow:
                 if current_session != self.state.dialogue_session_id or current_cycle != self.state.cycle_id:
                     return
 
-                self._queue_ui("CHAR_RENDER_CARNAGE", polluted_text, current_cycle)
+                # Pass the CLEAN visual_text to _render_overlapping_text so the chat log stays legible
+                # The polluted_text is only used for the scattered overlapping labels
+                self._queue_ui("CHAR_RENDER_CARNAGE", visual_text, current_cycle)
                 translation_line = extract_terminal_parenthetical_translation(spoken_text, user_lang)
                 if translation_line:
                     self._queue_ui("CHAR_RENDER", f"\n{translation_line}\n", current_cycle)
@@ -741,14 +1004,56 @@ class MainWindow:
         if not cleaned_text:
             return
 
-        selected_lang = self.state.cached_lang  # thread-safe (step 4)
-        target_lang_code = language_to_tts_code(selected_lang)
+        # Dynamically detect Saki's actual spoken language to prevent pronunciation conflicts (gibberish)
+        detected_lang = detect_language(cleaned_text, self.state.cached_lang)
+        target_lang_code = language_to_tts_code(detected_lang)
+
+        # Retrieve the correct default references for this detected language to prevent cross-language mismatch
+        ref_wav = self.refer_wav_path
+        p_text = self.prompt_text
+
+        # If using default configuration paths, dynamically hot-load/swap weights and references to match the spoken language!
+        default_zh_wav = DEFAULT_LANGUAGE_VOICES["中文"]["refer_wav_path"]
+        default_ja_wav = DEFAULT_LANGUAGE_VOICES["日本語"]["refer_wav_path"]
+        
+        is_default_ref = (
+            not ref_wav or
+            ref_wav == default_zh_wav or
+            ref_wav == default_ja_wav or
+            "huahuo.wav" in ref_wav or
+            "mita.wav" in ref_wav
+        )
+
+        if is_default_ref:
+            if detected_lang == "日本語":
+                ref_wav = default_ja_wav
+                p_text = DEFAULT_LANGUAGE_VOICES["日本語"]["prompt_text"]
+                gpt_w = DEFAULT_LANGUAGE_VOICES["日本語"]["gpt_weights_path"]
+                sovits_w = DEFAULT_LANGUAGE_VOICES["日本語"]["sovits_weights_path"]
+                if self.gpt_weights_path != gpt_w or self.sovits_weights_path != sovits_w:
+                    print(f"[Language Autodetect] Auto hot-loading Japanese Mita weights for Japanese text...")
+                    self._queue_ui("TRIGGER_LOAD_WEIGHTS", ("gpt", gpt_w))
+                    self._queue_ui("TRIGGER_LOAD_WEIGHTS", ("sovits", sovits_w))
+                    self.gpt_weights_path = gpt_w
+                    self.sovits_weights_path = sovits_w
+            else:
+                ref_wav = default_zh_wav
+                p_text = DEFAULT_LANGUAGE_VOICES["中文"]["prompt_text"]
+                gpt_w = DEFAULT_LANGUAGE_VOICES["中文"]["gpt_weights_path"]
+                sovits_w = DEFAULT_LANGUAGE_VOICES["中文"]["sovits_weights_path"]
+                if self.gpt_weights_path != gpt_w or self.sovits_weights_path != sovits_w:
+                    print(f"[Language Autodetect] Auto hot-loading Chinese Sparkle weights for Chinese text...")
+                    self._queue_ui("TRIGGER_LOAD_WEIGHTS", ("gpt", gpt_w))
+                    self._queue_ui("TRIGGER_LOAD_WEIGHTS", ("sovits", sovits_w))
+                    self.gpt_weights_path = gpt_w
+                    self.sovits_weights_path = sovits_w
 
         # ---- synthesize via shared tts_client ----
+        abs_refer_wav = os.path.abspath(ref_wav) if ref_wav else ""
         wav_bytes = synthesize_speech(
             cleaned_text,
-            self.refer_wav_path,
-            self.prompt_text,
+            abs_refer_wav,
+            p_text,
             self.gpt_sovits_url,
             target_lang_code,
             self.working_endpoint,
@@ -774,18 +1079,13 @@ class MainWindow:
             # ---- play via SoundManager ----
             channel = self.sound_mgr.play_voice_from_file(temp_file)
 
-            # ---- immediate cleanup ----
-            try:
-                os.remove(temp_file)
-                temp_file = None
-            except Exception:
-                pass
 
-            # ---- block until voice finishes (max 12s safety timeout to prevent Pygame lock deadlocks) ----
+
+            # ---- block until voice finishes (max 35s safety timeout to prevent Pygame lock deadlocks) ----
             if channel:
                 start_wait = time.time()
                 while channel.get_busy() and not self.state.game_over:
-                    if time.time() - start_wait > 12.0:
+                    if time.time() - start_wait > 35.0:
                         print("[warning] voice playback wait timeout, force unlocking.")
                         channel.stop()
                         break
@@ -1043,6 +1343,361 @@ class MainWindow:
         self.chat_text.config(state=tk.DISABLED)
         self.chat_text.see(tk.END)
 
+    # ========================================================================
+    #  Slots-Based JSON Save / Load Logic & Dynamic Character Swapping
+    # ========================================================================
+
+    def save_slot1(self):
+        self._async_save_slot(1)
+
+    def save_slot2(self):
+        self._async_save_slot(2)
+
+    def save_slot3(self):
+        self._async_save_slot(3)
+
+    def save_slot4(self):
+        self._async_save_slot(4)
+
+    def save_slot5(self):
+        self._async_save_slot(5)
+
+    def load_slot1(self):
+        self._async_load_slot(1)
+
+    def load_slot2(self):
+        self._async_load_slot(2)
+
+    def load_slot3(self):
+        self._async_load_slot(3)
+
+    def load_slot4(self):
+        self._async_load_slot(4)
+
+    def load_slot5(self):
+        self._async_load_slot(5)
+
+    def _async_save_slot(self, slot_num):
+        """Asynchronously save the current game state to a JSON file."""
+        def worker():
+            try:
+                # Capture values from GUI thread safely
+                api_key = self.entry_key.get_actual_value()
+                data = {
+                    "current_day": self.state.current_day,
+                    "favorability": self.state.favorability,
+                    "suspicion": self.state.suspicion,
+                    "escape_rate": self.state.escape_rate,
+                    "chat_history": self.chat_history,
+                    "api_key": api_key,
+                    "current_char_id": getattr(self.state, "current_char_id", "saki"),
+                    "selected_language": self.state.cached_lang,
+                }
+                filename = f"save_slot_{slot_num}.json"
+                with open(filename, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                self.root.after(0, lambda: self._write_chat_log(f"【系统】存档 Slot {slot_num} 成功！当前角色: {data['current_char_id']}\n", "system"))
+            except Exception as e:
+                self.root.after(0, lambda: self._write_chat_log(f"【系统】存档 Slot {slot_num} 失败：{e}\n", "system"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _async_load_slot(self, slot_num):
+        """Asynchronously load the game state from a JSON file."""
+        def worker():
+            try:
+                filename = f"save_slot_{slot_num}.json"
+                if not os.path.exists(filename):
+                    self.root.after(0, lambda: self._write_chat_log(f"【系统】读档失败：Slot {slot_num} 不存在！\n", "system"))
+                    return
+                with open(filename, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                def apply_loaded_data():
+                    self.state.current_day = data.get("current_day", 1)
+                    self.state.favorability = data.get("favorability", 50)
+                    self.state.suspicion = data.get("suspicion", 20)
+                    self.state.escape_rate = data.get("escape_rate", 0)
+                    self.chat_history = data.get("chat_history", [{"role": "system", "content": ""}])
+
+                    loaded_key = data.get("api_key", "")
+                    if loaded_key:
+                        self.entry_key.delete(0, tk.END)
+                        self.entry_key.insert(0, loaded_key)
+                        self.entry_key.config(fg="#FF0000")
+
+                    char_id = data.get("current_char_id", "saki")
+                    self.change_character(char_id)
+
+                    # Map UI language from slot data if available, fallback to detecting from history, then global configs
+                    chosen_lang = data.get("selected_language")
+                    if not chosen_lang:
+                        # Try to detect from chat history
+                        history = data.get("chat_history", [])
+                        detected = None
+                        for msg in reversed(history):
+                            if msg.get("role") == "assistant":
+                                content = msg.get("content", "")
+                                if "<think>" in content and "</think>" in content:
+                                    content = content.split("</think>")[-1]
+                                # If it has Hiragana/Katakana, it is Japanese
+                                if re.search(r"[぀-ゟ゠-ヿ]", content):
+                                    detected = "日本語"
+                                    break
+                                det = detect_language(content, None)
+                                if det:
+                                    detected = det
+                                    break
+                        chosen_lang = detected or self.config.get("selected_language", "中文")
+
+                    chosen_lang = normalize_language(chosen_lang)
+                    self.selected_language.set(chosen_lang)
+                    self.state.cached_lang = chosen_lang
+                    self.user_explicitly_selected_lang = True
+
+                    self.config["selected_language"] = chosen_lang
+                    save_config(self.config)
+
+                    self._update_ui_language()
+                    self._sync_stats_to_gui()
+                    self._restore_chat_history_to_gui()
+                    self._write_chat_log(f"【系统】成功载入存档 Slot {slot_num}！当前角色: {char_id}\n", "system")
+
+                self.root.after(0, apply_loaded_data)
+            except Exception as e:
+                self.root.after(0, lambda: self._write_chat_log(f"【系统】读档 Slot {slot_num} 失败：{e}\n", "system"))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def change_character(self, char_id):
+        """Change the active character dynamically (Prompt, Sound reference, and Dialogue colors)."""
+        self.state.current_char_id = char_id
+
+        # 1. Read custom characters
+        custom_chars = {}
+        if os.path.exists("custom_characters.json"):
+            try:
+                with open("custom_characters.json", "r", encoding="utf-8") as f:
+                    custom_chars = json.load(f)
+            except Exception:
+                pass
+
+        if char_id in custom_chars:
+            cdata = custom_chars[char_id]
+            name = cdata.get("name", "自定义角色")
+            chat_color = cdata.get("chat_color", "#FF3399")
+            ref_wav = cdata.get("refer_wav_path", "")
+            prompt_t = cdata.get("prompt_text", "")
+            gpt_w = cdata.get("gpt_weights_path", "")
+            sovits_w = cdata.get("sovits_weights_path", "")
+
+            # Update tag color
+            self.chat_text.tag_config("saki", foreground=chat_color)
+
+            # Update entries in configs
+            self.entry_refer_wav.delete(0, tk.END)
+            self.entry_refer_wav.insert(0, ref_wav)
+            self.entry_refer_wav.config(fg=chat_color)
+            self.refer_wav_path = ref_wav
+
+            self.entry_prompt_text.delete(0, tk.END)
+            self.entry_prompt_text.insert(0, prompt_t)
+            self.entry_prompt_text.config(fg=chat_color)
+            self.prompt_text = prompt_t
+
+            if gpt_w:
+                self.entry_gpt_weights.delete(0, tk.END)
+                self.entry_gpt_weights.insert(0, gpt_w)
+                self.entry_gpt_weights.config(fg=chat_color)
+                self.gpt_weights_path = gpt_w
+            if sovits_w:
+                self.entry_sovits_weights.delete(0, tk.END)
+                self.entry_sovits_weights.insert(0, sovits_w)
+                self.entry_sovits_weights.config(fg=chat_color)
+                self.sovits_weights_path = sovits_w
+
+            self.lbl_refer_wav_title.config(fg=chat_color)
+            print(f"[切换角色] 已切换至自定义角色: {name}")
+
+            # Trigger weights hotload if exists
+            if gpt_w and os.path.exists(gpt_w):
+                self._async_load_weights("gpt", gpt_w)
+            if sovits_w and os.path.exists(sovits_w):
+                self._async_load_weights("sovits", sovits_w)
+
+        else:
+            # Dynamic dialogue color: Crimson red for Saki
+            self.chat_text.tag_config("saki", foreground="#CC0000")
+
+            # Load references in GUI
+            self.entry_refer_wav.delete(0, tk.END)
+            saki_wav = self.config.get("refer_wav_path") or ""
+            if not saki_wav:
+                saki_wav = "saki_refer.wav"
+            self.entry_refer_wav.insert(0, saki_wav)
+            self.entry_refer_wav.config(fg="#FF0000")
+            self.refer_wav_path = saki_wav
+
+            saki_prompt = self.config.get("prompt_text") or "你终于醒了，亲爱的..."
+            self.entry_prompt_text.delete(0, tk.END)
+            self.entry_prompt_text.insert(0, saki_prompt)
+            self.entry_prompt_text.config(fg="#FF0000")
+            self.prompt_text = saki_prompt
+
+            self.lbl_refer_wav_title.config(fg="#FF0000")
+            print(f"[切换角色] 已切换至纱希 (Saki)")
+
+        # Sync System prompt content directly in history
+        self.chat_history[0]["content"] = self._get_dynamic_system_prompt()
+
+    def toggle_character(self):
+        """Toggle between Saki and custom characters."""
+        char_ids = ["saki"]
+        custom_chars = {}
+        if os.path.exists("custom_characters.json"):
+            try:
+                with open("custom_characters.json", "r", encoding="utf-8") as f:
+                    custom_chars = json.load(f)
+                for k in custom_chars:
+                    if k not in char_ids:
+                        char_ids.append(k)
+            except Exception:
+                pass
+
+        current_char = getattr(self.state, "current_char_id", "saki")
+        if current_char not in char_ids:
+            current_char = "saki"
+
+        cur_idx = char_ids.index(current_char)
+        next_idx = (cur_idx + 1) % len(char_ids)
+        next_char = char_ids[next_idx]
+
+        self.change_character(next_char)
+
+        char_display = {
+            "saki": "纱希 (Saki)"
+        }
+        if next_char in custom_chars:
+            char_display[next_char] = f"{custom_chars[next_char].get('name', '自定义角色')} ({next_char})"
+
+        self._write_chat_log(f"【系统】已切换角色至：{char_display.get(next_char, next_char)} (按 F12 再次切换)\n", "system")
+
+    def _sync_stats_to_gui(self):
+        """Synchronize the current game state values directly into Tkinter UI widgets."""
+        self.bar_favor["value"] = self.state.favorability
+        self.bar_sus["value"] = self.state.suspicion
+        self.bar_esc["value"] = self.state.escape_rate
+
+        self.lbl_favor_val.config(text=f"{self.state.favorability}")
+        self.lbl_sus_val.config(text=f"{self.state.suspicion}")
+        self.lbl_esc_val.config(text=f"{self.state.escape_rate}%")
+
+        lang = normalize_language(self.selected_language.get())
+        loc = LOCALIZATION[lang]
+        self.lbl_day.config(text=loc["day"].format(day=self.state.current_day))
+
+    def _restore_chat_history_to_gui(self):
+        """Redraw all past dialogues from self.chat_history into the chat widget."""
+        print(f"[Memory Restore] Beginning restoration. History length: {len(self.chat_history)}")
+        self.chat_text.config(state=tk.NORMAL)
+        self.chat_text.delete("1.0", tk.END)
+        self.chat_text.config(state=tk.DISABLED)
+
+        lang = normalize_language(self.selected_language.get())
+        print(f"[Memory Restore] Target interface language: {lang}")
+        think_prefix = LOCALIZATION[lang]["think_prefix"]
+        think_suffix = LOCALIZATION[lang]["think_suffix"]
+        saki_prefix = LOCALIZATION[lang]["saki_prefix"]
+        user_prefix = LOCALIZATION[lang]["user_prefix"]
+
+        # Skip the system instruction prompt
+        for idx, msg in enumerate(self.chat_history[1:], start=1):
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if not content:
+                print(f"[Memory Restore] Skipping item {idx} due to empty content")
+                continue
+
+            print(f"[Memory Restore] Processing item {idx}: role={role}, content_len={len(content)}")
+
+            if role == "user":
+                self._write_chat_log(f"{user_prefix}{content}\n", "user")
+            elif role == "assistant":
+                parsed = parse_api_response(content, "", self.state)
+                think_content = parsed.get("think", "")
+                spoken_text = parsed.get("spoken", "")
+                
+                if think_content:
+                    self._write_chat_log(f"{think_prefix}{think_content}{think_suffix}", "think")
+                
+                self._write_chat_log(saki_prefix, "saki")
+                self._write_chat_log(f"{spoken_text}\n", "saki")
+
+    # ========================================================================
+    #  Fourth-Wall Break & Typing Hijack Mechanisms
+    # ========================================================================
+
+    def _start_fourth_wall_monitor(self):
+        """Start the background thread monitoring suspicion / escape_rate for fourth-wall break."""
+        def monitor_worker():
+            while True:
+                if self.state.game_over:
+                    time.sleep(1.0)
+                    continue
+
+                suspicion = self.state.suspicion
+                escape_rate = self.state.escape_rate
+
+                # High anxiety threshold (>= 75)
+                if suspicion >= 75 or escape_rate >= 75:
+                    if not getattr(self, "input_hijacked", False):
+                        self.input_hijacked = True
+                        self.hijack_char_index = 0
+                        self.current_hijack_phrase = None
+                        print(f"[第四面墙] 焦虑值爆涨 (疑心={suspicion}, 逃脱={escape_rate})，已启动输入框劫持！")
+                else:
+                    if getattr(self, "input_hijacked", False):
+                        self.input_hijacked = False
+                        self.hijack_char_index = 0
+                        self.current_hijack_phrase = None
+                        print("[第四面墙] 焦虑值正常，解除输入框劫持。")
+
+                time.sleep(0.4)
+
+        t = threading.Thread(target=monitor_worker, daemon=True)
+        t.start()
+
+    def _on_entry_key_press(self, event):
+        """Hijack entry keypress when anxiety level is critical (>= 75)."""
+        if getattr(self, "input_hijacked", False):
+            # Let functional/navigation keys pass so the player can submit, navigate, etc.
+            if event.keysym in ("Return", "Tab", "Escape", "Right", "Left", "Up", "Down"):
+                return None
+
+            if event.keysym == "BackSpace":
+                # Physically block backspacing for extra creepy physical oppression
+                return "break"
+
+            phrase = "你走不掉的你走不掉的你走不掉的你走不掉 the 你走不掉的你走不掉的你走不掉的……"
+
+            # Cache the phrase for consistency during this single sentence
+            if not getattr(self, "current_hijack_phrase", None):
+                self.current_hijack_phrase = phrase
+            phrase = self.current_hijack_phrase
+
+            # Get the next character in sequence
+            idx = getattr(self, "hijack_char_index", 0)
+            char_to_insert = phrase[idx % len(phrase)]
+            self.entry_input.insert(tk.INSERT, char_to_insert)
+            self.hijack_char_index = idx + 1
+
+            # Play high-pitch tension feedback click
+            self.sound_mgr.play_beep(random.randint(600, 750), 30)
+
+            # Prevent the default keyboard typing behavior
+            return "break"
+        return None
+
     def _set_typing_state(self, is_typing):
         self.is_typing = is_typing
         loc = LOCALIZATION[normalize_language(self.selected_language.get())]
@@ -1166,6 +1821,481 @@ class MainWindow:
             self._flood_canvas_ref = None
         self.barrage_active = False
 
+    def _load_language_default_voice(self, lang):
+        """Automatically load default reference audio, texts, and hot-load models based on chosen language."""
+        if lang not in DEFAULT_LANGUAGE_VOICES:
+            return
+
+        vcfg = DEFAULT_LANGUAGE_VOICES[lang]
+        ref_wav = vcfg.get("refer_wav_path", "")
+        prompt_t = vcfg.get("prompt_text", "")
+        gpt_w = vcfg.get("gpt_weights_path", "")
+        sovits_w = vcfg.get("sovits_weights_path", "")
+
+        # Auto-fill GUI fields if they exist
+        if hasattr(self, "entry_refer_wav") and self.entry_refer_wav.winfo_exists():
+            self.entry_refer_wav.delete(0, tk.END)
+            self.entry_refer_wav.insert(0, ref_wav)
+            self.entry_refer_wav.config(fg="#FF0000")
+        self.refer_wav_path = ref_wav
+
+        if hasattr(self, "entry_prompt_text") and self.entry_prompt_text.winfo_exists():
+            self.entry_prompt_text.delete(0, tk.END)
+            self.entry_prompt_text.insert(0, prompt_t)
+            self.entry_prompt_text.config(fg="#FF0000")
+        self.prompt_text = prompt_t
+
+        if hasattr(self, "entry_gpt_weights") and self.entry_gpt_weights.winfo_exists():
+            self.entry_gpt_weights.delete(0, tk.END)
+            self.entry_gpt_weights.insert(0, gpt_w)
+            self.entry_gpt_weights.config(fg="#FF0000")
+        self.gpt_weights_path = gpt_w
+
+        if hasattr(self, "entry_sovits_weights") and self.entry_sovits_weights.winfo_exists():
+            self.entry_sovits_weights.delete(0, tk.END)
+            self.entry_sovits_weights.insert(0, sovits_w)
+            self.entry_sovits_weights.config(fg="#FF0000")
+        self.sovits_weights_path = sovits_w
+
+        # Save to config
+        self.config["refer_wav_path"] = ref_wav
+        self.config["prompt_text"] = prompt_t
+        self.config["gpt_weights_path"] = gpt_w
+        self.config["sovits_weights_path"] = sovits_w
+
+        # Trigger hot-load in the background if files exist
+        if gpt_w and os.path.exists(gpt_w):
+            self._async_load_weights("gpt", gpt_w)
+        if sovits_w and os.path.exists(sovits_w):
+            self._async_load_weights("sovits", sovits_w)
+
+        print(f"[Language Defaults] Successfully loaded default voice model configurations for: {lang}")
+
+    def _on_alt_f4(self):
+        """Safeguard window closing on Alt-F4 by redirecting to Load Slot 4."""
+        print("[Alt-F4 Intercepted] Slot 4 recovery safety active.")
+        self.load_slot4()
+        return "break"
+
+    def _on_esc_pressed(self):
+        """Handle ESC key pressed to notify the user, perform autosave, and open Slots Overwrite Panel."""
+        if self.state.game_over:
+            return
+
+        # Write auto-save indicator in chat log
+        self._write_chat_log("【系统】检测到神经断开指令！自动保存中……已成功锁定当前意识进度。\n", "system")
+
+        # Capture current settings values
+        api_key = self.entry_key.get_actual_value()
+
+        # Save an emergency state auto-save so we have it
+        try:
+            emergency_data = {
+                "current_day": self.state.current_day,
+                "favorability": self.state.favorability,
+                "suspicion": self.state.suspicion,
+                "escape_rate": self.state.escape_rate,
+                "chat_history": self.chat_history,
+                "api_key": api_key,
+                "current_char_id": getattr(self.state, "current_char_id", "saki"),
+                "selected_language": self.state.cached_lang,
+            }
+            with open("save_slot_autosave.json", "w", encoding="utf-8") as f:
+                json.dump(emergency_data, f, ensure_ascii=False, indent=4)
+        except Exception:
+            pass
+
+        # Create beautiful Toplevel save dialog
+        pop = tk.Toplevel(self.root)
+        pop.title("神经接口断开与存档管理")
+        pop.geometry("640x520")
+        pop.configure(bg="#000000")
+        pop.resizable(False, False)
+        pop.transient(self.root)
+        pop.grab_set()
+
+        lbl_header = tk.Label(
+            pop, text="[ 神经同步断开与存档面板 / Save Slots ]", fg="#FF0000", bg="#000000",
+            font=("Consolas", 14, "bold")
+        )
+        lbl_header.pack(pady=15)
+
+        slots_frame = tk.Frame(pop, bg="#000000")
+        slots_frame.pack(fill=tk.BOTH, expand=True, padx=25)
+
+        selected_slot_var = tk.IntVar(value=1)
+
+        def delete_slot_in_popup(slot_num):
+            if messagebox.askyesno("删除确认", f"您确定要永久删除记忆槽位 {slot_num} 吗？"):
+                fn = f"save_slot_{slot_num}.json"
+                if os.path.exists(fn):
+                    try:
+                        os.remove(fn)
+                        print(f"[ESC Delete] Deleted slot {slot_num}")
+                    except Exception as e:
+                        print(f"[ESC Delete Fail] {e}")
+                refresh_slots()
+
+        def refresh_slots():
+            for widget in slots_frame.winfo_children():
+                widget.destroy()
+
+            occupied_count = 0
+            slot_infos = {}
+            has_save_dict = {}
+            for idx in range(1, 6):
+                fn = f"save_slot_{idx}.json"
+                if os.path.exists(fn):
+                    occupied_count += 1
+                    has_save_dict[idx] = True
+                    try:
+                        with open(fn, "r", encoding="utf-8") as f:
+                            sdata = json.load(f)
+                        char_id = sdata.get("current_char_id", "saki")
+                        char_name = "纱希 (Saki)" if char_id == "saki" else f"自定义 ({char_id})"
+                        slot_infos[idx] = f"第 {sdata.get('current_day', 1)} 天 | {char_name} | 好感:{sdata.get('favorability', 50)} 疑心:{sdata.get('suspicion', 20)}"
+                    except Exception:
+                        slot_infos[idx] = "已占用 (读取错误)"
+                else:
+                    has_save_dict[idx] = False
+                    slot_infos[idx] = "- 空白记忆槽位 -"
+
+            if occupied_count >= 5:
+                lbl_warning = tk.Label(
+                    slots_frame, text="【警告】所有记忆槽位已满！保存进度将覆盖选中的旧存档。",
+                    fg="#FF3333", bg="#000000", font=("Microsoft YaHei", 9, "bold"), wrap=480, justify=tk.LEFT
+                )
+                lbl_warning.pack(fill=tk.X, pady=(0, 10))
+
+            # Render 5 slots with Radiobutton
+            for idx in range(1, 6):
+                sf = tk.Frame(slots_frame, bg="#000000")
+                sf.pack(fill=tk.X, pady=6)
+
+                # Radio button to select this slot
+                rb = tk.Radiobutton(
+                    sf, text=f"Slot {idx}:", variable=selected_slot_var, value=idx,
+                    fg="#FF3399", bg="#000000", selectcolor="#000000",
+                    activeforeground="#FF0000", activebackground="#000000",
+                    font=("Consolas", 10, "bold"), width=9, anchor=tk.W
+                )
+                rb.pack(side=tk.LEFT)
+
+                info_fg = "#FF3399" if has_save_dict[idx] else "#555555"
+                lbl_info = tk.Label(
+                    sf, text=slot_infos[idx], fg=info_fg, bg="#000000",
+                    font=("Microsoft YaHei", 9), anchor=tk.W
+                )
+                lbl_info.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+                if has_save_dict[idx]:
+                    def make_del_cmd(slot_num):
+                        return lambda: delete_slot_in_popup(slot_num)
+                    btn_del = tk.Button(
+                        sf, text="删除", fg="#FF3333", bg="#0D0000",
+                        activeforeground="#FFFFFF", activebackground="#220000",
+                        relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=6,
+                        command=make_del_cmd(idx)
+                    )
+                    btn_del.pack(side=tk.RIGHT)
+
+        refresh_slots()
+
+        def save_and_return():
+            slot_num = selected_slot_var.get()
+            fn = f"save_slot_{slot_num}.json"
+            if os.path.exists(fn):
+                if not messagebox.askyesno("覆盖存档", f"槽位 {slot_num} 已经有存档了，是否覆盖它？"):
+                    return
+
+            try:
+                # Capture current settings values
+                api_key = self.entry_key.get_actual_value()
+                data = {
+                    "current_day": self.state.current_day,
+                    "favorability": self.state.favorability,
+                    "suspicion": self.state.suspicion,
+                    "escape_rate": self.state.escape_rate,
+                    "chat_history": self.chat_history,
+                    "api_key": api_key,
+                    "current_char_id": getattr(self.state, "current_char_id", "saki"),
+                    "selected_language": self.state.cached_lang,
+                }
+                with open(fn, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                print(f"[ESC Save] Successfully saved to slot {slot_num}")
+            except Exception as e:
+                messagebox.showerror("存档失败", f"无法保护您的神经进度：{e}")
+                return
+
+            pop.destroy()
+            self._disconnect_to_splash()
+
+        bf = tk.Frame(pop, bg="#000000")
+        bf.pack(fill=tk.X, side=tk.BOTTOM, pady=25)
+
+        btn_save_ret = tk.Button(
+            bf, text="保存并返回主菜单", fg="#2ECC71", bg="#0D0000",
+            activeforeground="#FFFFFF", activebackground="#27AE60",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9, "bold"), width=16,
+            command=save_and_return
+        )
+        btn_save_ret.pack(side=tk.LEFT, padx=(30, 10))
+
+        btn_direct_exit = tk.Button(
+            bf, text="直接退出（不保存）", fg="#FF3333", bg="#0D0000",
+            activeforeground="#FFFFFF", activebackground="#C0392B",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9, "bold"), width=16,
+            command=lambda: [pop.destroy(), self._disconnect_to_splash()]
+        )
+        btn_direct_exit.pack(side=tk.LEFT, padx=10)
+
+        btn_cancel = tk.Button(
+            bf, text="返回", fg="#888888", bg="#0D0D0D",
+            activeforeground="#FFFFFF", activebackground="#222222",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), width=10,
+            command=pop.destroy
+        )
+        btn_cancel.pack(side=tk.RIGHT, padx=30)
+
+    def _disconnect_to_splash(self):
+        """Tear down gameplay and return to startup screen."""
+        self._emergency_clear_overlays()
+        self.state.game_over = False
+        self.sound_mgr.stop_voice()
+        self._show_splash_screen()
+
+    def _on_splash_settings_clicked(self):
+        """Pop up the Custom Character Profile input editor directly from the Splash screen."""
+        pop = tk.Toplevel(self.root)
+        pop.title("自定义角色脑回路配置")
+        pop.geometry("640x720")
+        pop.configure(bg="#000000")
+        pop.resizable(False, False)
+        pop.transient(self.root)
+        pop.grab_set()
+
+        lbl_title = tk.Label(
+            pop, text="[ ⚙ 自定义神经角色脑回路配置 ]", fg="#FF0000", bg="#000000",
+            font=("Consolas", 12, "bold")
+        )
+        lbl_title.pack(pady=15)
+
+        form = tk.Frame(pop, bg="#000000")
+        form.pack(fill=tk.BOTH, expand=True, padx=30)
+
+        row_idx = 0
+        def add_field(label_text, is_large=False):
+            nonlocal row_idx
+            lbl = tk.Label(form, text=label_text, fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+            lbl.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+
+            if is_large:
+                text_widget = tk.Text(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
+                                     relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), height=3, width=50, wrap=tk.WORD)
+                text_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+                row_idx += 1
+                return text_widget
+            else:
+                entry_widget = tk.Entry(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
+                                       relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), width=50)
+                entry_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+                row_idx += 1
+                return entry_widget
+
+        ent_name = add_field("角色姓名 (Name):")
+        ent_age = add_field("角色年龄 (Age):")
+        txt_personality = add_field("性格设定 (Personality):", is_large=True)
+        txt_story = add_field("背景与故事主线 (Story):", is_large=True)
+        txt_plot = add_field("特有交互剧情 (Plot):", is_large=True)
+        txt_world = add_field("所处世界观 (World):", is_large=True)
+        ent_color = add_field("聊天文字颜色 (Color):")
+
+        # WAV Reference with browse
+        lbl_wav = tk.Label(form, text="参考音频 (.wav):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_wav.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        wav_frame = tk.Frame(form, bg="#000000")
+        wav_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_wav = tk.Entry(wav_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_wav.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        def browse_wav():
+            fn = filedialog.askopenfilename(filetypes=[("WAV files", "*.wav")])
+            if fn:
+                ent_wav.delete(0, tk.END)
+                ent_wav.insert(0, fn)
+        btn_browse = tk.Button(wav_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_wav)
+        btn_browse.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        ent_text = add_field("参考音频文本 (Text):")
+
+        # Weights paths
+        lbl_gpt = tk.Label(form, text="GPT 权重 (.ckpt):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_gpt.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        gpt_frame = tk.Frame(form, bg="#000000")
+        gpt_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_gpt = tk.Entry(gpt_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_gpt.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        def browse_gpt():
+            fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.ckpt")])
+            if fn:
+                ent_gpt.delete(0, tk.END)
+                ent_gpt.insert(0, fn)
+        btn_bgpt = tk.Button(gpt_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_gpt)
+        btn_bgpt.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        lbl_sovits = tk.Label(form, text="SoVITS 权重 (.pth):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_sovits.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        sovits_frame = tk.Frame(form, bg="#000000")
+        sovits_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_sovits = tk.Entry(sovits_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_sovits.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        def browse_sovits():
+            fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.pth")])
+            if fn:
+                ent_sovits.delete(0, tk.END)
+                ent_sovits.insert(0, fn)
+        btn_bsovits = tk.Button(sovits_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_sovits)
+        btn_bsovits.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        form.columnconfigure(1, weight=1)
+
+        # Load existing custom character data if exists
+        custom_data = {}
+        if os.path.exists("custom_characters.json"):
+            try:
+                with open("custom_characters.json", "r", encoding="utf-8") as f:
+                    custom_data = json.load(f)
+            except Exception:
+                pass
+
+        cdata = custom_data.get("custom", custom_data.get("sparkle", {}))
+        ent_name.insert(0, cdata.get("name", "花火"))
+        ent_age.insert(0, cdata.get("age", "18"))
+        txt_personality.insert("1.0", cdata.get("personality", "小恶魔、变幻莫测、疯狂、腹黑，极度热爱捉弄玩家"))
+        txt_story.insert("1.0", cdata.get("main_story", "她是假面愚者的成员，将玩家关进了一个布满迷幻霓虹与马戏团玩具的游乐园密室，用各种虚实难辨的游戏爱着你"))
+        txt_plot.insert("1.0", cdata.get("character_plot", "每当你表现出顺从，她就会露出天真烂漫的笑容；而一旦你试图逃跑，她就会微笑着摆弄炸弹引爆器"))
+        txt_world.insert("1.0", cdata.get("world_view", "一个充满迷幻霓虹、马戏团狂欢和荒诞黑色幽默的虚无主义都市"))
+        ent_color.insert(0, cdata.get("chat_color", "#FF3399"))
+        ent_wav.insert(0, cdata.get("refer_wav_path", "D:/花火/yingping/huahuo.wav_0000000000_0000061760.wav"))
+        ent_text.insert(0, cdata.get("prompt_text", "独向昭谈至恶龙一阁著文章。"))
+        ent_gpt.insert(0, cdata.get("gpt_weights_path", "D:/花火/Huahuo_Yandere-e10.ckpt"))
+        ent_sovits.insert(0, cdata.get("sovits_weights_path", "D:/花火/Huahuo_Yandere_e10_s440.pth"))
+
+        def save_custom_char():
+            cdata_new = {
+                "name": ent_name.get().strip() or "自定义角色",
+                "age": ent_age.get().strip() or "18",
+                "personality": txt_personality.get("1.0", tk.END).strip(),
+                "main_story": txt_story.get("1.0", tk.END).strip(),
+                "character_plot": txt_plot.get("1.0", tk.END).strip(),
+                "world_view": txt_world.get("1.0", tk.END).strip(),
+                "chat_color": ent_color.get().strip() or "#FF3399",
+                "refer_wav_path": ent_wav.get().strip(),
+                "prompt_text": ent_text.get().strip(),
+                "gpt_weights_path": ent_gpt.get().strip(),
+                "sovits_weights_path": ent_sovits.get().strip(),
+            }
+            custom_data["custom"] = cdata_new
+            try:
+                with open("custom_characters.json", "w", encoding="utf-8") as f:
+                    json.dump(custom_data, f, ensure_ascii=False, indent=4)
+                messagebox.showinfo("成功", "自定义角色脑波参数保存成功！")
+                pop.destroy()
+            except Exception as e:
+                messagebox.showerror("错误", f"保存自定义角色脑回路失败：{e}")
+
+        btn_save = tk.Button(
+            pop, text="保存角色配置", fg="#2ECC71", bg="#001F00", activeforeground="#2ECC71", activebackground="#053005",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 10, "bold"), width=20, height=2,
+            command=save_custom_char
+        )
+        btn_save.pack(pady=15)
+
+    def _load_slot_from_splash(self, slot_num):
+        """Instantly load gameplay slot directly from Splash screen, bypassing greetings."""
+        filename = f"save_slot_{slot_num}.json"
+        if not os.path.exists(filename):
+            return
+
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Apply loaded states
+            self.state.current_day = data.get("current_day", 1)
+            self.state.favorability = data.get("favorability", 50)
+            self.state.suspicion = data.get("suspicion", 20)
+            self.state.escape_rate = data.get("escape_rate", 0)
+            self.chat_history = data.get("chat_history", [{"role": "system", "content": ""}])
+
+            loaded_key = data.get("api_key", "")
+            if loaded_key:
+                self.entry_key.delete(0, tk.END)
+                self.entry_key.insert(0, loaded_key)
+                self.entry_key.config(fg="#FF0000")
+
+            # Swap character
+            char_id = data.get("current_char_id", "saki")
+            self.change_character(char_id)
+
+            # Map UI language from slot data if available, fallback to detecting from history, then global configs
+            chosen_lang = data.get("selected_language")
+            if not chosen_lang:
+                # Try to detect from chat history
+                history = data.get("chat_history", [])
+                detected = None
+                for msg in reversed(history):
+                    if msg.get("role") == "assistant":
+                        content = msg.get("content", "")
+                        if "<think>" in content and "</think>" in content:
+                            content = content.split("</think>")[-1]
+                        # If it has Hiragana/Katakana, it is Japanese
+                        if re.search(r"[぀-ゟ゠-ヿ]", content):
+                            detected = "日本語"
+                            break
+                        det = detect_language(content, None)
+                        if det:
+                            detected = det
+                            break
+                chosen_lang = detected or self.config.get("selected_language", "中文")
+
+            chosen_lang = normalize_language(chosen_lang)
+            self.selected_language.set(chosen_lang)
+            self.state.cached_lang = chosen_lang
+            self.user_explicitly_selected_lang = True
+
+            self.config["selected_language"] = chosen_lang
+            save_config(self.config)
+
+            self._update_ui_language()
+            self._sync_stats_to_gui()
+            self._restore_chat_history_to_gui()
+
+            # Destroy splash screen smoothly
+            if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
+                self.splash_frame.destroy()
+
+            self._write_chat_log(f"【系统】脑机突触建立成功！已从 Slot {slot_num} 恢复神经记忆回路。\n", "system")
+            print(f"[Splash Load] Successfully loaded memory Slot {slot_num}")
+        except Exception as e:
+            messagebox.showerror("载入失败", f"无法唤醒该插槽的记忆电位：{e}")
+
+    def _delete_slot_from_splash(self, slot_num):
+        """Confirm and physically delete a save slot file directly from Splash screen, then refresh."""
+        if messagebox.askyesno("删除确认", f"您确定要永久删除记忆槽位 {slot_num} 吗？"):
+            fn = f"save_slot_{slot_num}.json"
+            if os.path.exists(fn):
+                try:
+                    os.remove(fn)
+                    print(f"[删除存档] 已删除 {fn}")
+                except Exception as e:
+                    print(f"[删除存档失败] {e}")
+            self._show_splash_screen()
+
     # ========================================================================
     #  Settings toggle
     # ========================================================================
@@ -1188,6 +2318,8 @@ class MainWindow:
     # ========================================================================
 
     def _show_splash_screen(self):
+        if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
+            self.splash_frame.destroy()
         self.splash_frame = tk.Frame(self.root, bg="#000000")
         self.splash_frame.place(x=0, y=0, relwidth=1, relheight=1)
         self.splash_frame.lift()
@@ -1199,7 +2331,7 @@ class MainWindow:
             bg="#000000",
             font=("Consolas", 24, "bold"),
         )
-        lbl_splash_title.pack(pady=(180, 20))
+        lbl_splash_title.pack(pady=(60, 10))
 
         lbl_splash_subtitle = tk.Label(
             self.splash_frame,
@@ -1209,10 +2341,10 @@ class MainWindow:
             font=("Microsoft YaHei", 11, "bold"),
             justify=tk.CENTER,
         )
-        lbl_splash_subtitle.pack(pady=(0, 40))
+        lbl_splash_subtitle.pack(pady=(0, 20))
 
         btn_frame = tk.Frame(self.splash_frame, bg="#000000")
-        btn_frame.pack(pady=10)
+        btn_frame.pack(pady=5)
 
         langs = [
             ("简体中文", "中文"),
@@ -1239,24 +2371,108 @@ class MainWindow:
             btn.bind("<Enter>", lambda e, b=btn: b.config(fg="#FF0000", bg="#0F0000", highlightbackground="#FF0000"))
             btn.bind("<Leave>", lambda e, b=btn: b.config(fg="#8A0303", bg="#000000", highlightbackground="#222222"))
 
+        # Separator
+        div = tk.Frame(self.splash_frame, height=1, bg="#222222")
+        div.pack(fill=tk.X, padx=100, pady=15)
+
+        # Settings button for custom characters
+        self.btn_splash_settings = tk.Button(
+            self.splash_frame,
+            text=" ⚙ 自定义角色配置 / Custom Character Settings ",
+            fg="#FF0000",
+            bg="#0A0000",
+            activeforeground="#FF0000",
+            activebackground="#200000",
+            relief=tk.SOLID,
+            bd=1,
+            font=("Microsoft YaHei", 10, "bold"),
+            command=self._on_splash_settings_clicked
+        )
+        self.btn_splash_settings.pack(pady=5)
+        self.btn_splash_settings.bind("<Enter>", lambda e: self.btn_splash_settings.config(fg="#FF3399", bg="#150000"))
+        self.btn_splash_settings.bind("<Leave>", lambda e: self.btn_splash_settings.config(fg="#FF0000", bg="#0A0000"))
+
+        # Save Slots Title
+        lbl_slots_title = tk.Label(
+            self.splash_frame,
+            text="[ 脑机接口历史记忆载入 / Memory Slot Management ]",
+            fg="#8A0303",
+            bg="#000000",
+            font=("Consolas", 11, "bold")
+        )
+        lbl_slots_title.pack(pady=(15, 5))
+
+        slots_container = tk.Frame(self.splash_frame, bg="#000000")
+        slots_container.pack(fill=tk.X, padx=100, pady=5)
+
+        for idx in range(1, 6):
+            fn = f"save_slot_{idx}.json"
+            slot_desc = f"Slot {idx}: - 空白记忆槽位 - (Empty Memory Slot)"
+            has_save = False
+
+            if os.path.exists(fn):
+                has_save = True
+                try:
+                    with open(fn, "r", encoding="utf-8") as f:
+                        sdata = json.load(f)
+                    char_id = sdata.get("current_char_id", "saki")
+                    char_name = "纱希 (Saki)" if char_id == "saki" else f"自定义 ({char_id})"
+                    day = sdata.get("current_day", 1)
+                    favor = sdata.get("favorability", 50)
+                    sus = sdata.get("suspicion", 20)
+                    slot_desc = f"Slot {idx}: 第 {day} 天 | 角色: {char_name} | 好感: {favor} 疑心: {sus}"
+                except Exception:
+                    slot_desc = f"Slot {idx}: 已占用 (读取错误)"
+
+            slot_row = tk.Frame(slots_container, bg="#000000")
+            slot_row.pack(fill=tk.X, pady=2)
+
+            lbl_desc = tk.Label(
+                slot_row, text=slot_desc, fg="#FF3399" if has_save else "#444444", bg="#000000",
+                font=("Microsoft YaHei", 9), anchor=tk.W
+            )
+            lbl_desc.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            def make_load_cmd(slot_num):
+                return lambda: self._load_slot_from_splash(slot_num)
+
+            btn_load = tk.Button(
+                slot_row, text="载入记忆", fg="#2ECC71" if has_save else "#333333", bg="#000000",
+                activeforeground="#2ECC71", activebackground="#0A150A",
+                relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=10,
+                state=tk.NORMAL if has_save else tk.DISABLED,
+                command=make_load_cmd(idx)
+            )
+            btn_load.pack(side=tk.RIGHT)
+
+            if has_save:
+                def make_delete_cmd(slot_num):
+                    return lambda: self._delete_slot_from_splash(slot_num)
+                btn_delete = tk.Button(
+                    slot_row, text="删除", fg="#E74C3C", bg="#000000",
+                    activeforeground="#FFFFFF", activebackground="#C0392B",
+                    relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=6,
+                    command=make_delete_cmd(idx)
+                )
+                btn_delete.pack(side=tk.RIGHT, padx=(0, 5))
+
     def _start_game_with_language(self, chosen_lang):
         chosen_lang = normalize_language(chosen_lang)
         self.selected_language.set(chosen_lang)
         self.state.cached_lang = chosen_lang  # step 2
         self.user_explicitly_selected_lang = True
 
+        # Perform a complete reset of all game state, chat history, and visual effects to start fresh (HoI4 style)
+        self._restart_game()
+
         self.config["selected_language"] = chosen_lang
+        self._load_language_default_voice(chosen_lang)
         save_config(self.config)
 
         self._update_ui_language()
 
         if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
             self.splash_frame.destroy()
-
-        self.root.after(
-            300,
-            lambda: self._enqueue_saki_response(INITIAL_GREETINGS[chosen_lang]),
-        )
 
     # ========================================================================
     #  Language change handler
@@ -1268,6 +2484,7 @@ class MainWindow:
         self.state.cached_lang = self.selected_language.get()  # step 2
 
         self.config["selected_language"] = self.selected_language.get()
+        self._load_language_default_voice(self.selected_language.get())
         save_config(self.config)
 
         if self.chat_history:
@@ -1446,12 +2663,13 @@ class MainWindow:
 
         def loader():
             url = self.gpt_sovits_url.rstrip("/")
+            abs_filepath = os.path.abspath(filepath) if filepath else ""
             if weight_type == "gpt":
                 target_url = f"{url}/set_gpt_weights"
-                params = {"weights_path": filepath}
+                params = {"weights_path": abs_filepath}
             else:
                 target_url = f"{url}/set_sovits_weights"
-                params = {"weights_path": filepath}
+                params = {"weights_path": abs_filepath}
 
             try:
                 res = requests.get(
@@ -1800,16 +3018,17 @@ class MainWindow:
         do_pull()
 
     def _render_overlapping_text(self, text):
-        """Render carnage-style overlapping labels (step 9: cap at 8)."""
+        """Render carnage-style overlapping labels with auto-decay legibility optimization."""
         if not text:
             return
 
         if not hasattr(self, "carnage_labels"):
             self.carnage_labels = []
 
+        # Print legible spoken text wrapped in glitch block boundaries for style
         self.chat_text.config(state=tk.NORMAL)
         prefix = glitch_text(self.state.cached_lang, "prefix")
-        self.chat_text.insert(tk.END, f"{prefix}█▄▅▆▇█\n", "glitch_large")
+        self.chat_text.insert(tk.END, f"{prefix}█▄ {text} ▆▇█\n", "saki")
         self.chat_text.config(state=tk.DISABLED)
         self.chat_text.see(tk.END)
 
@@ -1821,8 +3040,15 @@ class MainWindow:
             chunks.append("".join(words[i : i + chunk_len]))
             i += chunk_len
 
-        # Increase representation to 65 chunks to achieve a truly terrifying full-screen overlapping chaos
-        target_count = 65
+        # Sprinkle some rune symbols into scattered label chunks for atmosphere
+        # (this does NOT affect the clean chat log line above)
+        runes_scatter = ["☠", "♥", "🔪", "⛓", "🖤", "❤", "♦", "✝", "☆", "◆"]
+        for idx in range(len(chunks)):
+            if random.random() < 0.25:
+                chunks[idx] = random.choice(runes_scatter) + chunks[idx] + random.choice(runes_scatter)
+
+        # Maintain 55 scattered red chunks for terrifying full-screen overlapping chaos (as user requested)
+        target_count = 55
         if len(chunks) > target_count:
             chunks = random.sample(chunks, target_count)
         elif len(chunks) > 0:
@@ -1836,13 +3062,14 @@ class MainWindow:
         if w_height <= 100:
             w_height = 500
 
+        current_labels = []
         for chunk in chunks:
             rx = random.randint(10, max(20, w_width - 300))
             ry = random.randint(10, max(20, w_height - 80))
 
-            font_size = random.choice([16, 20, 24, 28])
+            font_size = random.choice([14, 18, 22, 26])
             if random.random() < 0.15:
-                font_size = 36
+                font_size = 34
 
             lbl = tk.Label(
                 self.chat_text,
@@ -1855,6 +3082,19 @@ class MainWindow:
             )
             lbl.place(x=rx, y=ry)
             self.carnage_labels.append(lbl)
+            current_labels.append(lbl)
+
+        # Automatically decay/destroy these specific labels after 2.5 seconds to restore reading clarity
+        def auto_decay():
+            for l in current_labels:
+                try:
+                    if l.winfo_exists():
+                        l.destroy()
+                        if l in self.carnage_labels:
+                            self.carnage_labels.remove(l)
+                except Exception:
+                    pass
+        self.root.after(2500, auto_decay)
 
     # ========================================================================
     #  Physical window shake (step 7: coordinates read on main thread)

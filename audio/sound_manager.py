@@ -20,6 +20,7 @@ class SoundManager:
         self.heartbeat_sound = None
         self.heartbeat_channel = None
         self.voice_channel = None
+        self.current_voice_sound = None
 
     # ------------------------------------------------------------------
     # Heartbeat background loop
@@ -67,13 +68,49 @@ class SoundManager:
             return None
 
         try:
-            voice_sound = pygame.mixer.Sound(filepath)
-            channel = voice_sound.play()
+            if self.voice_channel:
+                try:
+                    self.voice_channel.stop()
+                except Exception:
+                    pass
+            self.current_voice_sound = pygame.mixer.Sound(filepath)
+            channel = self.current_voice_sound.play()
             self.voice_channel = channel
             return channel
         except Exception as ex:
             print(f"[system] voice playback failed: {ex}")
             return None
+
+    def stop_voice(self):
+        """Stop only the voice channel if it is playing."""
+        if HAS_PYGAME and self.voice_channel:
+            try:
+                self.voice_channel.stop()
+            except Exception:
+                pass
+
+    def play_beep(self, frequency=1000, duration_ms=100):
+        """Play a synthesized beep tone using pure Python stdlib."""
+        if not HAS_PYGAME or not pygame.mixer.get_init():
+            return
+        
+        import math
+        import array
+        
+        sample_rate = 22050
+        num_samples = int(sample_rate * (duration_ms / 1000.0))
+        buf = array.array('h')
+        for i in range(num_samples):
+            t = float(i) / sample_rate
+            val = int(16384.0 * math.sin(2.0 * math.pi * frequency * t))
+            buf.append(val)
+            
+        try:
+            sound = pygame.mixer.Sound(buffer=buf)
+            sound.set_volume(0.2)
+            sound.play()
+        except Exception as e:
+            print(f"[system] play_beep failed: {e}")
 
     # ------------------------------------------------------------------
     # Lifecycle

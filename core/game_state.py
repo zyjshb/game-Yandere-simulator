@@ -337,6 +337,10 @@ class GameState:
         # Language
         self.cached_lang = normalize_language(cached_lang)
 
+        # Character customization
+        self.current_char_id = "saki"
+        self.local_insult_back_attack = False
+
         # Pending ending (set when game_over triggers)
         self.pending_ending = None
 
@@ -435,3 +439,5 @@ class GameState:
         self.first_msg_detected = False
         self.last_user_input = ""
         self.pending_ending = None
+        self.current_char_id = "saki"
+        self.local_insult_back_attack = False
