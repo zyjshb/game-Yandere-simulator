@@ -1409,7 +1409,8 @@ class YandereGameApp:
         
         # 绑定窗口 Configure 监听防逃逸缩小约束
         self.root.bind("<Configure>", self._on_window_resized)
-        
+        self.root.bind("<Escape>", lambda e: self._emergency_clear_overlays())
+
         # 启动语言选择启动屏，暂不播放心跳和问候
         self.root.after(100, self._show_splash_screen)
 
@@ -2006,6 +2007,14 @@ class YandereGameApp:
             self.settings_visible = True
             # 触发面板炫酷淡入过渡动画
             self._animate_panel_fade_in()
+
+    def _emergency_clear_overlays(self):
+        """Escape 键紧急清除：销毁所有残留遮罩，恢复界面。"""
+        self.overlay_mgr.force_clear()
+        if hasattr(self, '_flood_canvas_ref') and self._flood_canvas_ref is not None:
+            self._safe_destroy_widget(self._flood_canvas_ref)
+            self._flood_canvas_ref = None
+        self.barrage_active = False
 
     def _on_window_resized(self, event=None):
         if event and str(event.widget) != ".":
@@ -2807,8 +2816,11 @@ class YandereGameApp:
         if hasattr(self, 'overlay') and self.overlay.winfo_exists():
             self.overlay.destroy()
 
-        # 清理程序化特效叠加层
-        self.overlay_mgr.hide()
+        # 清理程序化特效叠加层与残留遮罩
+        self.overlay_mgr.force_clear()
+        if hasattr(self, '_flood_canvas_ref') and self._flood_canvas_ref is not None:
+            self._safe_destroy_widget(self._flood_canvas_ref)
+            self._flood_canvas_ref = None
 
         # 重置所有心理恐怖状态
         self.mouse_pull_active = False
@@ -3088,65 +3100,61 @@ class YandereGameApp:
 
     def _start_obsessive_barrage(self, duration_sec=1.0):
         """
-        米塔式代码堆叠污染（MiTa-Style Stack Overflow）执念字符强制刷屏：
-        在半透明 Canvas 层上，瀑布般刷出成百上千行密密麻麻、层层重叠、完全将原本 UI 吞噬的血红色词条，
-        随后瞬间蒸发。
+        执念字符强制刷屏：在半透明 Canvas 层上刷出血红色词条后瞬间蒸发。
+        严格限制 80 个文本元素，防止大量 Widget 创建阻塞主线程导致黑屏。
         """
+        # 销毁上一次未清理的遮罩，防止叠加黑屏
+        if hasattr(self, '_flood_canvas_ref') and self._flood_canvas_ref is not None:
+            self._safe_destroy_widget(self._flood_canvas_ref)
+            self._flood_canvas_ref = None
+
         self.barrage_active = True
         w_width, w_height = get_widget_size(self.root)
-        
-        # 创建遮罩 Canvas
-        flood_canvas = tk.Canvas(
-            self.root,
-            bg="#000000",
-            highlightthickness=0,
-            bd=0
-        )
+
+        flood_canvas = tk.Canvas(self.root, bg="#000000", highlightthickness=0, bd=0)
+        self._flood_canvas_ref = flood_canvas
         flood_canvas.place(x=0, y=0, relwidth=1, relheight=1)
-        flood_canvas.tkraise() # Safe raising instead of .lift() to avoid TclError
-        
         try:
-            # 填充半透明极暗红色底色
+            flood_canvas.tkraise()
+        except Exception:
+            pass
+
+        def _cleanup_flood():
+            self._safe_destroy_widget(flood_canvas)
+            self.barrage_active = False
+            if hasattr(self, '_flood_canvas_ref') and self._flood_canvas_ref is flood_canvas:
+                self._flood_canvas_ref = None
+
+        try:
             flood_canvas.create_rectangle(0, 0, w_width, w_height, fill="#050000", outline="")
-            
+
             words = []
             try:
-                words = glitch_text(self.selected_language.get(), "barrage")
-            except Exception as e:
-                print(f"[Glitch Text Error] {e}")
-                
+                words = glitch_text(self.cached_lang, "barrage")
+            except Exception:
+                pass
             if not words:
-                words = ["看着我", "你是我的", "ERROR", "YOU CANNOT ESCAPE", "看着我看着我", "你是我的你是我的", "見て", "逃げられないよ"]
-                
-            # 瀑布般画出 380 行密密麻麻、层层重叠的字条
-            for _ in range(380):
+                words = ["看着我", "你是我的", "ERROR", "YOU CANNOT ESCAPE"]
+
+            for _ in range(80):
                 rx = random.randint(-40, max(40, w_width - 80))
                 ry = random.randint(-20, max(40, w_height))
-                size = random.choice([16, 20, 24, 30, 36, 44, 52])
-                color = random.choice([
-                    "#FF0000", "#D30000", "#B20000", "#9E0000", "#7A0000", "#E60000", "#FF3333"
-                ])
+                size = random.choice([16, 20, 24, 30, 36])
+                color = random.choice(["#FF0000", "#D30000", "#B20000", "#9E0000", "#7A0000"])
                 word = random.choice(words)
-                
-                font_opt = ("Microsoft YaHei", size, "bold")
-                flood_canvas.create_text(
-                    rx, ry,
-                    text=word,
-                    fill=color,
-                    font=font_opt,
-                    anchor=tk.NW
-                )
+                flood_canvas.create_text(rx, ry, text=word, fill=color,
+                                         font=("Microsoft YaHei", size, "bold"),
+                                         anchor=tk.NW)
         except Exception as err:
-            print(f"[Barrage Loop Error] {err}")
-        finally:
-            # 瞬间蒸发（销毁 Canvas），1秒后必定销毁，防止黑屏！
-            duration_ms = int(duration_sec * 1000)
-            
-            def clean_up():
-                self._safe_destroy_widget(flood_canvas)
-                self.barrage_active = False
-                
-            self.root.after(duration_ms, clean_up)
+            print(f"[Barrage Error] {err}")
+            _cleanup_flood()
+            return
+
+        duration_ms = int(duration_sec * 1000)
+        try:
+            self.root.after(duration_ms, _cleanup_flood)
+        except Exception:
+            _cleanup_flood()
 
     def _trigger_melt_overlay(self, duration_ms=1200):
         """

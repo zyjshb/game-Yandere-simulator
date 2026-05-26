@@ -370,26 +370,40 @@ class OverlayManager:
     def __init__(self, parent):
         self.parent = parent
         self._label = None
-        self._photo_ref = None  # keep alive to prevent GC
-        self._after_id = None   # Track the active timer to prevent race conditions
+        self._photo_ref = None
+        self._after_id = None
+        self._safety_id = None  # hard timeout failsafe (max 5s)
 
     def show(self, photo_image, duration_ms=None):
         self.hide()
-        self._photo_ref = photo_image
-        self._label = tk.Label(self.parent, image=photo_image, bg="#000000", bd=0,
-                               highlightthickness=0)
-        self._label.place(x=0, y=0, relwidth=1, relheight=1)
-        if duration_ms is not None:
+        # 强制上限 5 秒，防止永久黑屏
+        if duration_ms is None or duration_ms > 5000:
+            duration_ms = 5000
+        try:
+            self._photo_ref = photo_image
+            self._label = tk.Label(self.parent, image=photo_image, bg="#000000", bd=0,
+                                   highlightthickness=0)
+            self._label.place(x=0, y=0, relwidth=1, relheight=1)
             self._after_id = self.parent.after(duration_ms, self.hide)
+            # 双重保险：硬超时兜底
+            self._safety_id = self.parent.after(duration_ms + 2000, self._force_hide)
+        except Exception:
+            self._force_hide()
+
+    def _force_hide(self):
+        """硬超时兜底：不管什么状态，强制清除。"""
+        self.hide()
 
     def hide(self):
-        if self._after_id is not None:
-            try:
-                self.parent.after_cancel(self._after_id)
-            except Exception:
-                pass
-            self._after_id = None
-            
+        for tid in (self._after_id, self._safety_id):
+            if tid is not None:
+                try:
+                    self.parent.after_cancel(tid)
+                except Exception:
+                    pass
+        self._after_id = None
+        self._safety_id = None
+
         if self._label is not None:
             try:
                 self._label.destroy()
@@ -397,6 +411,10 @@ class OverlayManager:
                 pass
             self._label = None
         self._photo_ref = None
+
+    def force_clear(self):
+        """紧急清除：忽略所有状态，强制销毁叠加层。"""
+        self.hide()
 
     @property
     def visible(self):
