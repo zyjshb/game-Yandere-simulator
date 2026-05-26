@@ -6,3 +6,7 @@ yandere_config.json
 temp_saki_*.wav
 *.ckpt
 *.pth
+models/
+save_slot_*.json
+saki_settings.txt
+custom_characters.json
