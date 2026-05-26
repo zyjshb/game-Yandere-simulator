@@ -17,17 +17,19 @@ class ProceduralFX:
 
     @staticmethod
     def blood_splatter(width, height, drops=40, intensity=0.6):
-        """Generate a semi-transparent blood splatter overlay."""
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        """Generate a semi-transparent blood splatter overlay (optimized)."""
+        sw = max(10, width // 2)
+        sh = max(10, height // 2)
+        img = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
         base = (180, 10, 15)  # deep arterial red
 
-        for _ in range(drops):
-            cx = random.randint(0, width)
-            cy = random.randint(0, height)
+        for _ in range(min(drops, 25)):
+            cx = random.randint(0, sw)
+            cy = random.randint(0, sh)
             # main splatter blob
-            r = random.randint(8, max(12, int(45 * intensity)))
+            r = random.randint(4, max(6, int(22 * intensity)))
             alpha = random.randint(40, int(200 * intensity))
             color = (
                 base[0] + random.randint(-20, 30),
@@ -38,46 +40,49 @@ class ProceduralFX:
             draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
 
             # trailing droplets
-            for _ in range(random.randint(1, 5)):
+            for _ in range(random.randint(1, 3)):
                 tx = cx + random.randint(-r * 2, r * 2)
                 ty = cy + random.randint(-r * 2, r * 2)
                 tr = random.randint(1, max(2, r // 3))
                 draw.ellipse([tx - tr, ty - tr, tx + tr, ty + tr], fill=color)
 
         # darken / pool in corners
-        for _ in range(int(drops * 0.4)):
-            cx = random.randint(0, width)
-            cy = random.randint(int(height * 0.7), height)
-            r = random.randint(15, 60)
+        for _ in range(int(drops * 0.2)):
+            cx = random.randint(0, sw)
+            cy = random.randint(int(sh * 0.7), sh)
+            r = random.randint(8, 30)
             dark_pool = (50, 0, 5, random.randint(30, 100))
             draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=dark_pool)
 
-        img = img.filter(ImageFilter.GaussianBlur(radius=1.5))
+        img = img.filter(ImageFilter.GaussianBlur(radius=1.0))
+        img = img.resize((width, height), Image.BILINEAR)
         return ImageTk.PhotoImage(img)
 
     @staticmethod
     def vignette(width, height, darkness=0.55):
-        """Radial vignette: dark edges, clearer center."""
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        """Radial vignette: dark edges, clearer center (optimized)."""
+        sw = max(10, width // 4)
+        sh = max(10, height // 4)
+        img = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        cx, cy = width // 2, height // 2
+        cx, cy = sw // 2, sh // 2
         max_dist = math.sqrt(cx * cx + cy * cy)
 
         # draw concentric rings of increasing opacity
-        steps = 40
+        steps = 25
         for i in range(steps):
             ratio = i / steps
-            # inner is clear, outer is dark
             alpha = int(255 * darkness * (ratio ** 1.8))
             r = int(max_dist * ratio)
             draw.ellipse(
                 [cx - r, cy - r, cx + r, cy + r],
                 outline=(0, 0, 0, alpha),
-                width=random.randint(1, 3),
+                width=1,
             )
 
-        img = img.filter(ImageFilter.GaussianBlur(radius=8))
+        img = img.filter(ImageFilter.GaussianBlur(radius=3))
+        img = img.resize((width, height), Image.BILINEAR)
         return ImageTk.PhotoImage(img)
 
     @staticmethod
@@ -94,17 +99,20 @@ class ProceduralFX:
 
     @staticmethod
     def static_noise(width, height, intensity=0.25):
-        """Random static/noise texture for glitch moments."""
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        """Random static/noise texture for glitch moments (optimized)."""
+        sw = max(10, width // 8)
+        sh = max(10, height // 8)
+        img = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
         pixels = img.load()
 
         alpha = int(255 * intensity)
-        for y in range(height):
-            for x in range(width):
+        for y in range(sh):
+            for x in range(sw):
                 if random.random() < intensity:
                     v = random.randint(0, 80)
                     pixels[x, y] = (v, 0, 0, alpha)
 
+        img = img.resize((width, height), Image.NEAREST)
         return ImageTk.PhotoImage(img)
 
     @staticmethod
@@ -244,20 +252,22 @@ class ProceduralFX:
 
     @staticmethod
     def pixel_melt_layer(width, height, intensity=0.5):
-        """Generate vertical melting tracks with red pixel trails and digital smear columns."""
-        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        """Generate vertical melting tracks (optimized)."""
+        sw = max(10, width // 2)
+        sh = max(10, height // 2)
+        img = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        num_drips = int(30 + intensity * 80)
+        num_drips = int(15 + intensity * 30)
         for _ in range(num_drips):
-            x = random.randint(0, width - 5)
-            y_start = random.randint(0, int(height * 0.8))
-            length = random.randint(20, int(150 + intensity * 200))
-            w = random.randint(1, 4)
+            x = random.randint(0, sw - 2)
+            y_start = random.randint(0, int(sh * 0.8))
+            length = random.randint(10, int(75 + intensity * 100))
+            w = random.randint(1, 2)
 
             for dy in range(length):
                 cy = y_start + dy
-                if cy >= height:
+                if cy >= sh:
                     break
                 alpha_factor = 1.0 - (dy / length)
                 alpha = int((100 + random.randint(0, 120)) * alpha_factor)
@@ -270,4 +280,6 @@ class ProceduralFX:
                     alpha
                 )
                 draw.rectangle([cx, cy, cx + w - 1, cy + 1], fill=color)
+
+        img = img.resize((width, height), Image.NEAREST)
         return ImageTk.PhotoImage(img)

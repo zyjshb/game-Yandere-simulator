@@ -302,39 +302,16 @@ class MainWindow:
     # ========================================================================
 
     def _start_border_pulse_loop(self):
-        def pulse():
-            if self.state.game_over:
-                return
-            susp = self.state.suspicion
-            if susp >= 50:
-                pulse_val = 0.3 + 0.7 * (susp - 50) / 50.0
-                phase = math.sin(time.time() * 3.0) * 0.5 + 0.5
-                intensity = pulse_val * phase
-                w, h = get_widget_size(self.root)
-                img = ProceduralFX.flesh_pulse_frame(w, h, pulse=intensity)
-                self.overlay_mgr.show(img, duration_ms=120)
-            self.root.after(600 if susp < 50 else 200, pulse)
-
-        pulse()
+        # 彻底关停后台高频红边闪烁循环，杜绝任何持续性背景乱闪，完美契合用户安静高级的设计诉求
+        pass
 
     # ========================================================================
     #  CRT flicker loop
     # ========================================================================
 
     def _start_crt_flicker_loop(self):
-        def flicker():
-            if self.state.game_over:
-                return
-            if not getattr(self.state, "shaking", False) and not self.is_typing:
-                bright = random.choice(["#000000", "#020000", "#050000", "#000000"])
-                try:
-                    self.chat_text.config(bg=bright)
-                    self.chat_frame.config(bg=bright)
-                except Exception:
-                    pass
-            self.root.after(random.randint(50, 180), flicker)
-
-        flicker()
+        # 彻底关停后台高频CRT背景闪动循环，防止任何刺眼背景闪烁，只保留老式静止暗黑质感
+        pass
 
     # ========================================================================
     #  Panel fade-in animation
@@ -546,6 +523,9 @@ class MainWindow:
     def _on_send(self):
         if self.is_typing or self.state.game_over:
             return
+
+        # 立即在发送新消息前紧急清理所有上一轮的黑屏遮罩与视觉残留，实现绝对干净自愈
+        self._emergency_clear_overlays()
 
         user_text = self.entry_input.get().strip()
         if not user_text:
@@ -801,9 +781,14 @@ class MainWindow:
             except Exception:
                 pass
 
-            # ---- block until voice finishes ----
+            # ---- block until voice finishes (max 12s safety timeout to prevent Pygame lock deadlocks) ----
             if channel:
+                start_wait = time.time()
                 while channel.get_busy() and not self.state.game_over:
+                    if time.time() - start_wait > 12.0:
+                        print("[warning] voice playback wait timeout, force unlocking.")
+                        channel.stop()
+                        break
                     if session_id != self.state.dialogue_session_id:
                         channel.stop()
                         return
@@ -1104,7 +1089,7 @@ class MainWindow:
                 )
 
         if translation_required(lang, user_lang):
-            reply += build_offline_translation_line(intent["name"], user_lang)
+            reply += build_offline_translation_line(intent["name"], user_lang, reply)
 
         suffix = LANGUAGE_PROFILES[lang]["fallback_suffix"].format(
             delta_f=delta_f,
@@ -1495,7 +1480,8 @@ class MainWindow:
         self.state.ecg_frenzy = True
         self.state.scanlines_active = True
 
-        steps = int(duration_ms / 20)
+        # 改为固定 4 次（2次完整呼吸式红黑闪烁），完全避免密集闪烁刺眼和卡顿，大幅提升惊悚电影质感
+        steps = 4
         cycle_id = self.state.cycle_id
 
         def revert_colors():
@@ -1549,7 +1535,7 @@ class MainWindow:
             except Exception:
                 pass
 
-            self.root.after(20, lambda: do_strobe(step + 1))
+            self.root.after(60, lambda: do_strobe(step + 1))
 
         do_strobe()
 
@@ -1835,8 +1821,13 @@ class MainWindow:
             chunks.append("".join(words[i : i + chunk_len]))
             i += chunk_len
 
-        if len(chunks) > 8:
-            chunks = random.sample(chunks, 8)
+        # Increase representation to 65 chunks to achieve a truly terrifying full-screen overlapping chaos
+        target_count = 65
+        if len(chunks) > target_count:
+            chunks = random.sample(chunks, target_count)
+        elif len(chunks) > 0:
+            while len(chunks) < target_count:
+                chunks.extend(random.sample(chunks, min(len(chunks), target_count - len(chunks))))
 
         w_width = self.chat_text.winfo_width()
         w_height = self.chat_text.winfo_height()

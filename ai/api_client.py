@@ -66,7 +66,7 @@ def _generate_mock_reply(user_input, selected_lang):
             )
 
     if translation_required(lang, user_lang):
-        reply += build_offline_translation_line(intent["name"], user_lang)
+        reply += build_offline_translation_line(intent["name"], user_lang, reply)
 
     suffix = LANGUAGE_PROFILES[lang]["fallback_suffix"].format(
         delta_f=delta_f,
