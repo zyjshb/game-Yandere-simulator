@@ -77,67 +77,176 @@ new_game/
 
 ---
 
-## 环境依赖
+## 完整启动教程
 
-### 必需
-| 依赖 | 用途 | 安装 |
-|------|------|------|
-| Python 3.10+ | 运行环境 | [python.org](https://www.python.org/) |
-| pygame | 音频播放、心跳音效 | `pip install pygame` |
-| Pillow | 程序化纹理生成 | `pip install Pillow` |
-| requests | HTTP 请求（API + TTS） | `pip install requests` |
+### 第一步：克隆项目
 
-### 可选
-| 依赖 | 用途 |
-|------|------|
-| **GPT-SoVITS** | 语音合成服务（本地部署） |
-| DeepSeek API Key | AI 对话（也可离线运行） |
-
----
-
-## 快速开始
-
-### 1. 克隆仓库
 ```bash
 git clone https://github.com/zyjshb/game-Yandere-simulator.git
 cd game-Yandere-simulator
 ```
 
-### 2. 安装 Python 依赖
+---
+
+### 第二步：安装 Python 环境
+
+**Windows:**
+1. 前往 [python.org](https://www.python.org/) 下载 Python 3.10 或更高版本
+2. 安装时勾选 **"Add Python to PATH"**
+3. 打开 PowerShell 或 CMD，验证安装：
+   ```powershell
+   python --version
+   ```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-tk
+python3 --version
+```
+
+**macOS:**
+```bash
+brew install python@3.10
+python3 --version
+```
+
+---
+
+### 第三步：安装 Python 依赖
+
 ```bash
 pip install pygame Pillow requests
 ```
 
-### 3. 配置 AI 对话（可选，离线也能玩）
+> Linux 如果遇到 `pygame` 安装失败，先安装 SDL 库：
+> ```bash
+> sudo apt install libsdl2-2.0-0 libsdl2-mixer-2.0-0 libsdl2-image-2.0-0
+> ```
 
-启动游戏后，展开顶部 `⚙ API` 面板：
-- **API KEY**：填入 DeepSeek API Key（https://platform.deepseek.com）
-- **API BASE**：`https://api.deepseek.com`
-- **MODEL NAME**：`deepseek-v4-flash`
+---
 
-不填 API Key 将使用本地离线回复库。
+### 第四步：配置 AI 对话（可选——不配也能玩）
 
-### 4. 配置语音合成（可选）
+游戏默认使用离线回复库，无需任何 API Key。如果你想获得更智能的对话体验：
 
-需要本地部署 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)。
+1. 注册 [DeepSeek](https://platform.deepseek.com) 并获取 API Key
+2. 启动游戏后，点击顶部 `⚙ API` 展开配置面板，填入：
+   - **API KEY**：你的 DeepSeek API Key
+   - **API BASE**：`https://api.deepseek.com`
+   - **MODEL NAME**：`deepseek-v4-flash`
+3. 点击面板里的 **API 连接测试** 按钮验证配置
 
-启动 GPT-SoVITS 服务后：
-- **TTS BASE**：`http://127.0.0.1:9880`
-- **参考音频**：选择 WAV 文件（`models/hua/huahuo.wav_...wav` 或 `models/mi/mita.wav_...wav`）
-- **参考文本**：参考音频对应的文字内容
-- **GPT 模型**：`.ckpt` 权重文件路径
-- **SoVITS 模型**：`.pth` 权重文件路径
+> 也支持任何兼容 OpenAI API 格式的服务（如本地 Ollama、vLLM 等），修改 API BASE 即可。
 
-游戏启动时会自动探测 TTS 端点，并根据回复语言热切换中日文模型。
+---
 
-### 5. 启动游戏
+### 第五步：部署 GPT-SoVITS 语音合成（可选——不配也能玩）
+
+游戏的全部对话都可以用病娇声线朗读。语音合成依赖本地运行的 GPT-SoVITS 服务。
+
+#### 5.1 克隆 GPT-SoVITS
+
 ```bash
+git clone https://github.com/RVC-Boss/GPT-SoVITS.git
+cd GPT-SoVITS
+```
+
+#### 5.2 安装 GPT-SoVITS 依赖
+
+**Windows:**
+```powershell
+pip install -r requirements.txt
+```
+
+**Linux:**
+```bash
+pip install -r requirements.txt
+# 如果遇到 FFmpeg 缺失：
+sudo apt install ffmpeg
+```
+
+#### 5.3 准备模型权重
+
+将预训练的 GPT 模型（`.ckpt`）和 SoVITS 模型（`.pth`）放入 `GPT-SoVITS` 目录下。
+
+> 本项目 `models/` 目录中已包含中日双语参考音频与预训练权重：
+> - **中文**：花火（Huahuo）—— `models/hua/`
+> - **日文**：米塔（Mita）—— `models/mi/`
+
+#### 5.4 准备参考音频
+
+将参考音频（`.wav` 格式，3-10 秒干净人声）放入合适路径，并记录对应的文本内容。游戏中的默认配置：
+
+| 语言 | 参考音频 | 参考文本 |
+|------|----------|----------|
+| 中文 | `models/hua/huahuo.wav` | 你要是有什么危险的差事要办，尽管来找我。 |
+| 日文 | `models/mi/mita.wav` | どうして、また、た、わかった、またか、中身が気になるんでしょ? |
+
+#### 5.5 启动 GPT-SoVITS API 服务
+
+```bash
+python api_v2.py
+```
+
+默认监听 `http://127.0.0.1:9880`。看到类似以下输出表示启动成功：
+```
+Running on http://127.0.0.1:9880
+```
+
+#### 5.6 在游戏中配置 TTS
+
+启动游戏后，展开 `⚙ API` 面板：
+- **TTS BASE**：`http://127.0.0.1:9880`
+- **参考音频**：点击浏览选择 `.wav` 文件
+- **参考文本**：填入参考音频对应的文字
+- **GPT 模型**：点击浏览选择 `.ckpt` 权重
+- **SoVITS 模型**：点击浏览选择 `.pth` 权重
+
+点击面板中的 **热加载** 按钮，状态显示"加载成功"即可。游戏会自动探测 TTS 端点，并根据回复语言热切换中日文模型。
+
+---
+
+### 第六步：启动游戏
+
+**Windows:**
+```powershell
 python main.py
 ```
 
-### 6. 选择语言
+**Linux / macOS:**
+```bash
+python3 main.py
+```
 
-启动后首先进入语言选择画面，选择纱希与你对话的语言。
+启动后首先进入语言选择画面，选择纱希与你对话的语言（简体中文 / English / 日本語）。
+
+---
+
+### 第七步：开始对话
+
+选择语言后纱希会说出第一句问候。在底部输入框打字，按 **Enter** 发送。
+
+> 第一次运行时会自动在项目目录生成心跳音效 `heartbeat.wav`（12 秒低频双拍循环）。
+
+---
+
+## 启动流程速查
+
+```bash
+# 1. 克隆
+git clone https://github.com/zyjshb/game-Yandere-simulator.git
+cd game-Yandere-simulator
+
+# 2. 安装依赖
+pip install pygame Pillow requests
+
+# 3. (可选) 启动 GPT-SoVITS —— 另开一个终端
+# cd GPT-SoVITS && python api_v2.py
+
+# 4. 启动游戏
+python main.py
+```
 
 ---
 
@@ -202,17 +311,11 @@ python main.py
 
 ## 依赖项目
 
-本项目语音合成功能依赖 **GPT-SoVITS** 提供本地 TTS 服务。
+| 项目 | 用途 | 仓库 |
+|------|------|------|
+| **GPT-SoVITS** | 语音合成服务 | [RVC-Boss/GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) |
 
-### GPT-SoVITS 部署简述
-
-1. 克隆并安装 GPT-SoVITS：`git clone https://github.com/RVC-Boss/GPT-SoVITS.git`
-2. 准备参考音频（3-10 秒的干净人声 WAV）
-3. 训练或下载预训练模型权重
-4. 启动 API 服务：`python api_v2.py`（默认监听 `http://127.0.0.1:9880`）
-5. 在游戏配置面板中填入对应路径
-
-详细的 GPT-SoVITS 教程请参考 [官方文档](https://github.com/RVC-Boss/GPT-SoVITS)。
+> 详细部署步骤见上方「第五步：部署 GPT-SoVITS 语音合成」。
 
 ---
 
