@@ -8,5 +8,4 @@ temp_saki_*.wav
 *.pth
 models/
 save_slot_*.json
-saki_settings.txt
 custom_characters.json
