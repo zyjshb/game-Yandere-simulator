@@ -1633,6 +1633,647 @@ class MainWindow:
                 self._write_chat_log(saki_prefix, "saki")
                 self._write_chat_log(f"{spoken_text}\n", "saki")
 
+    def _disconnect_to_splash(self):
+        """Tear down gameplay and return to startup screen."""
+        self._emergency_clear_overlays()
+        self.state.game_over = False
+        self.sound_mgr.stop_voice()
+        self._show_splash_screen()
+
+    def _on_splash_settings_clicked(self):
+        """Pop up the Custom Character Profile input editor directly from the Splash screen."""
+        pop = tk.Toplevel(self.root)
+        pop.title("自定义角色脑回路配置")
+        pop.geometry("640x720")
+        pop.configure(bg="#000000")
+        pop.resizable(False, False)
+        pop.transient(self.root)
+        pop.grab_set()
+
+        lbl_title = tk.Label(
+            pop, text="[ ⚙ 自定义神经角色脑回路配置 ]", fg="#FF0000", bg="#000000",
+            font=("Consolas", 12, "bold")
+        )
+        lbl_title.pack(pady=15)
+
+        form = tk.Frame(pop, bg="#000000")
+        form.pack(fill=tk.BOTH, expand=True, padx=30)
+
+        row_idx = 0
+        def add_field(label_text, is_large=False):
+            nonlocal row_idx
+            lbl = tk.Label(form, text=label_text, fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+            lbl.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+
+            if is_large:
+                text_widget = tk.Text(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
+                                     relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), height=3, width=50, wrap=tk.WORD)
+                text_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+                row_idx += 1
+                return text_widget
+            else:
+                entry_widget = tk.Entry(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
+                                       relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), width=50)
+                entry_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+                row_idx += 1
+                return entry_widget
+
+        ent_name = add_field("角色姓名 (Name):")
+        ent_age = add_field("角色年龄 (Age):")
+        txt_personality = add_field("性格设定 (Personality):", is_large=True)
+        txt_story = add_field("背景与故事主线 (Story):", is_large=True)
+        txt_plot = add_field("特有交互剧情 (Plot):", is_large=True)
+        txt_world = add_field("所处世界观 (World):", is_large=True)
+        ent_color = add_field("聊天文字颜色 (Color):")
+
+        # WAV Reference with browse
+        lbl_wav = tk.Label(form, text="参考音频 (.wav):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_wav.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        wav_frame = tk.Frame(form, bg="#000000")
+        wav_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_wav = tk.Entry(wav_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_wav.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        def browse_wav():
+            fn = filedialog.askopenfilename(filetypes=[("WAV files", "*.wav")])
+            if fn:
+                ent_wav.delete(0, tk.END)
+                ent_wav.insert(0, fn)
+        btn_browse = tk.Button(wav_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_wav)
+        btn_browse.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        ent_text = add_field("参考音频文本 (Text):")
+
+        # Weights paths
+        lbl_gpt = tk.Label(form, text="GPT 权重 (.ckpt):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_gpt.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        gpt_frame = tk.Frame(form, bg="#000000")
+        gpt_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_gpt = tk.Entry(gpt_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_gpt.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        def browse_gpt():
+            fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.ckpt")])
+            if fn:
+                ent_gpt.delete(0, tk.END)
+                ent_gpt.insert(0, fn)
+        btn_bgpt = tk.Button(gpt_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_gpt)
+        btn_bgpt.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        lbl_sovits = tk.Label(form, text="SoVITS 权重 (.pth):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_sovits.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
+        sovits_frame = tk.Frame(form, bg="#000000")
+        sovits_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
+        ent_sovits = tk.Entry(sovits_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_sovits.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        def browse_sovits():
+            fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.pth")])
+            if fn:
+                ent_sovits.delete(0, tk.END)
+                ent_sovits.insert(0, fn)
+        btn_bsovits = tk.Button(sovits_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_sovits)
+        btn_bsovits.pack(side=tk.RIGHT, padx=(5, 0))
+        row_idx += 1
+
+        form.columnconfigure(1, weight=1)
+
+        # Load existing custom character data if exists
+        custom_data = {}
+        if os.path.exists("custom_characters.json"):
+            try:
+                with open("custom_characters.json", "r", encoding="utf-8") as f:
+                    custom_data = json.load(f)
+            except Exception:
+                pass
+
+        cdata = custom_data.get("custom", custom_data.get("sparkle", {}))
+        ent_name.insert(0, cdata.get("name", "花火"))
+        ent_age.insert(0, cdata.get("age", "18"))
+        txt_personality.insert("1.0", cdata.get("personality", "小恶魔、变幻莫测、疯狂、腹黑，极度热爱捉弄玩家"))
+        txt_story.insert("1.0", cdata.get("main_story", "她是假面愚者的成员，将玩家关进了一个布满迷幻霓虹与马戏团玩具的游乐园密室，用各种虚实难辨的游戏爱着你"))
+        txt_plot.insert("1.0", cdata.get("character_plot", "每当你表现出顺从，她就会露出天真烂漫的笑容；而一旦你试图逃跑，她就会微笑着摆弄炸弹引爆器"))
+        txt_world.insert("1.0", cdata.get("world_view", "一个充满迷幻霓虹、马戏团狂欢和荒诞黑色幽默的虚无主义都市"))
+        ent_color.insert(0, cdata.get("chat_color", "#FF3399"))
+        ent_wav.insert(0, cdata.get("refer_wav_path", "D:/花火/yingping/huahuo.wav_0000000000_0000061760.wav"))
+        ent_text.insert(0, cdata.get("prompt_text", "独向昭谈至恶龙一阁著文章。"))
+        ent_gpt.insert(0, cdata.get("gpt_weights_path", "D:/花火/Huahuo_Yandere-e10.ckpt"))
+        ent_sovits.insert(0, cdata.get("sovits_weights_path", "D:/花火/Huahuo_Yandere_e10_s440.pth"))
+
+        def save_custom_char():
+            cdata_new = {
+                "name": ent_name.get().strip() or "自定义角色",
+                "age": ent_age.get().strip() or "18",
+                "personality": txt_personality.get("1.0", tk.END).strip(),
+                "main_story": txt_story.get("1.0", tk.END).strip(),
+                "character_plot": txt_plot.get("1.0", tk.END).strip(),
+                "world_view": txt_world.get("1.0", tk.END).strip(),
+                "chat_color": ent_color.get().strip() or "#FF3399",
+                "refer_wav_path": ent_wav.get().strip(),
+                "prompt_text": ent_text.get().strip(),
+                "gpt_weights_path": ent_gpt.get().strip(),
+                "sovits_weights_path": ent_sovits.get().strip(),
+            }
+            custom_data["custom"] = cdata_new
+            try:
+                with open("custom_characters.json", "w", encoding="utf-8") as f:
+                    json.dump(custom_data, f, ensure_ascii=False, indent=4)
+                messagebox.showinfo("成功", "自定义角色脑波参数保存成功！")
+                pop.destroy()
+            except Exception as e:
+                messagebox.showerror("错误", f"保存自定义角色脑回路失败：{e}")
+
+        btn_save = tk.Button(
+            pop, text="保存角色配置", fg="#2ECC71", bg="#001F00", activeforeground="#2ECC71", activebackground="#053005",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 10, "bold"), width=20, height=2,
+            command=save_custom_char
+        )
+        btn_save.pack(pady=15)
+
+    def _load_slot_from_splash(self, slot_num):
+        """Instantly load gameplay slot directly from Splash screen, bypassing greetings."""
+        self._sync_api_from_splash()
+        filename = f"save_slot_{slot_num}.json"
+        if not os.path.exists(filename):
+            return
+
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Apply loaded states
+            self.state.current_day = data.get("current_day", 1)
+            self.state.favorability = data.get("favorability", 50)
+            self.state.suspicion = data.get("suspicion", 20)
+            self.state.escape_rate = data.get("escape_rate", 0)
+            self.chat_history = data.get("chat_history", [{"role": "system", "content": ""}])
+
+            loaded_key = data.get("api_key", "")
+            if loaded_key:
+                self.entry_key.delete(0, tk.END)
+                self.entry_key.insert(0, loaded_key)
+                self.entry_key.config(fg="#FF0000")
+
+            # Map UI language from slot data if available, fallback to detecting from history, then global configs
+            chosen_lang = data.get("selected_language")
+            if not chosen_lang:
+                # Try to detect from chat history
+                history = data.get("chat_history", [])
+                detected = None
+                for msg in reversed(history):
+                    if msg.get("role") == "assistant":
+                        content = msg.get("content", "")
+                        if "<think>" in content and "</think>" in content:
+                            content = content.split("</think>")[-1]
+                        # If it has Hiragana/Katakana, it is Japanese
+                        if re.search(r"[぀-ゟ゠-ヿ]", content):
+                            detected = "日本語"
+                            break
+                        det = detect_language(content, None)
+                        if det:
+                            detected = det
+                            break
+                chosen_lang = detected or self.config.get("selected_language", "中文")
+
+            chosen_lang = normalize_language(chosen_lang)
+            self.selected_language.set(chosen_lang)
+            self.state.cached_lang = chosen_lang
+            self.user_explicitly_selected_lang = True
+
+            self.config["selected_language"] = chosen_lang
+            save_config(self.config)
+
+            # Swap character - moved here to ensure state.cached_lang is updated to slot's true language (e.g. Japanese)
+            # before _get_dynamic_system_prompt is evaluated inside change_character
+            char_id = data.get("current_char_id", "saki")
+            self.change_character(char_id)
+
+            self._update_ui_language()
+            self._sync_stats_to_gui()
+            self._restore_chat_history_to_gui()
+
+            # Destroy splash screen smoothly
+            if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
+                self.splash_frame.destroy()
+
+            self._write_chat_log(f"【系统】脑机突触建立成功！已从 Slot {slot_num} 恢复神经记忆回路。\n", "system")
+            print(f"[Splash Load] Successfully loaded memory Slot {slot_num}")
+        except Exception as e:
+            messagebox.showerror("载入失败", f"无法唤醒该插槽的记忆电位：{e}")
+
+    def _delete_slot_from_splash(self, slot_num):
+        """Confirm and physically delete a save slot file directly from Splash screen, then refresh."""
+        if messagebox.askyesno("删除确认", f"您确定要永久删除记忆槽位 {slot_num} 吗？"):
+            fn = f"save_slot_{slot_num}.json"
+            if os.path.exists(fn):
+                try:
+                    os.remove(fn)
+                    print(f"[删除存档] 已删除 {fn}")
+                except Exception as e:
+                    print(f"[删除存档失败] {e}")
+            self._show_splash_screen()
+
+    # ========================================================================
+    #  Settings toggle
+    # ========================================================================
+
+    def _toggle_settings(self):
+        if self.settings_visible:
+            self.top_bar.pack_forget()
+            self.settings_frame.pack_forget()
+            self.settings_visible = False
+            self.btn_toggle_settings.config(text="[ 展开配置通道 ]", fg="#666666")
+        else:
+            self.top_bar.pack(before=self.canvas_ecg, fill=tk.X, padx=10, pady=5)
+            self.settings_frame.pack(before=self.canvas_ecg, fill=tk.X, padx=10, pady=5)
+            self.btn_toggle_settings.config(text="[ 收起配置通道 ]", fg="#8A0303")
+            self.settings_visible = True
+            self._animate_panel_fade_in()
+
+    # ========================================================================
+    #  Splash screen
+    # ========================================================================
+
+    def _show_splash_screen(self):
+        if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
+            self.splash_frame.destroy()
+        self.splash_frame = tk.Frame(self.root, bg="#000000")
+        self.splash_frame.place(x=0, y=0, relwidth=1, relheight=1)
+        self.splash_frame.lift()
+
+        # Premium sci-fi hacker-terminal header
+        lbl_splash_title = tk.Label(
+            self.splash_frame,
+            text="纱希 (Saki) - Terminal A.I.",
+            fg="#FF0033",
+            bg="#000000",
+            font=("Consolas", 26, "bold"),
+        )
+        lbl_splash_title.pack(pady=(40, 5))
+
+        lbl_splash_sys_status = tk.Label(
+            self.splash_frame,
+            text="● SYSTEM OVERLORD STATUS: ONLINE  |  NEURAL COUPLING STABLE",
+            fg="#00FF66",
+            bg="#000000",
+            font=("Consolas", 8, "bold")
+        )
+        lbl_splash_sys_status.pack(pady=(0, 15))
+
+        lbl_splash_subtitle = tk.Label(
+            self.splash_frame,
+            text="[ 请选择与纱希脑机接口建立连接的语言 ]\n[ Select Saki's Interface & Voice Language ]",
+            fg="#8A0303",
+            bg="#000000",
+            font=("Microsoft YaHei", 10, "bold"),
+            justify=tk.CENTER,
+        )
+        lbl_splash_subtitle.pack(pady=(0, 15))
+
+        btn_frame = tk.Frame(self.splash_frame, bg="#000000")
+        btn_frame.pack(pady=5)
+
+        langs = [
+            ("简体中文", "中文"),
+            ("English", "English"),
+            ("日本語", "日本語"),
+        ]
+
+        for text, lang_val in langs:
+            btn = tk.Button(
+                btn_frame,
+                text=text,
+                fg="#FF3333",
+                bg="#080000",
+                activeforeground="#FF0000",
+                activebackground="#150000",
+                relief=tk.SOLID,
+                bd=1,
+                font=("Microsoft YaHei", 11, "bold"),
+                width=18,
+                height=2,
+                command=lambda l=lang_val: self._start_game_with_language(l),
+            )
+            btn.pack(side=tk.LEFT, padx=12)
+            btn.bind("<Enter>", lambda e, b=btn: b.config(fg="#FF0000", bg="#180000", highlightbackground="#FF0000"))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(fg="#FF3333", bg="#080000", highlightbackground="#222222"))
+
+        # LabelFrame for API Connection Settings
+        from ui.custom_widgets import PlaceholderEntry
+
+        api_frame = tk.LabelFrame(
+            self.splash_frame,
+            text="  🛡️ 脑机接口通信协议配置 / Synapse Connection Settings  ",
+            fg="#FF0033",
+            bg="#000000",
+            font=("Consolas", 10, "bold"),
+            relief=tk.SOLID,
+            bd=1,
+            padx=15,
+            pady=10
+        )
+        api_frame.pack(fill=tk.X, padx=80, pady=15)
+
+        # Grid inside LabelFrame
+        lbl_splash_key = tk.Label(
+            api_frame, text="API Key:", fg="#888888", bg="#000000",
+            font=("Consolas", 9, "bold"), anchor=tk.W, width=10
+        )
+        lbl_splash_key.grid(row=0, column=0, sticky=tk.W, pady=3)
+
+        self.entry_splash_key = PlaceholderEntry(
+            api_frame, placeholder="在此输入你的 API Key (Enter API Key)",
+            placeholder_color="#444444", default_color="#FF0000", show_char="*",
+            bg="#0A0000", fg="#FF3333", insertbackground="#FF0000",
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9), width=50
+        )
+        self.entry_splash_key.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=3)
+        if self.config.get("api_key"):
+            self.entry_splash_key.delete(0, tk.END)
+            self.entry_splash_key.insert(0, self.config["api_key"])
+            self.entry_splash_key.config(fg="#FF3333", show="*")
+
+        lbl_splash_base = tk.Label(
+            api_frame, text="API Base:", fg="#888888", bg="#000000",
+            font=("Consolas", 9, "bold"), anchor=tk.W, width=10
+        )
+        lbl_splash_base.grid(row=1, column=0, sticky=tk.W, pady=3)
+
+        self.entry_splash_base = PlaceholderEntry(
+            api_frame, placeholder="默认: https://api.deepseek.com (Default URL)",
+            placeholder_color="#444444", default_color="#FF0000",
+            bg="#0A0000", fg="#FF3333", insertbackground="#FF0000",
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9), width=50
+        )
+        self.entry_splash_base.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=3)
+        if self.config.get("api_base"):
+            self.entry_splash_base.delete(0, tk.END)
+            self.entry_splash_base.insert(0, self.config["api_base"])
+            self.entry_splash_base.config(fg="#FF3333")
+
+        # Row 2: Test connection button and status label
+        test_frame = tk.Frame(api_frame, bg="#000000")
+        test_frame.grid(row=2, column=1, sticky=tk.EW, pady=(5, 0))
+
+        btn_test_conn = tk.Button(
+            test_frame, text=" 📡 测试 API 联通性 / Test Connection ", fg="#FF3333", bg="#100000",
+            activeforeground="#FF0000", activebackground="#200000",
+            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"),
+            command=self._test_api_connection
+        )
+        btn_test_conn.pack(side=tk.LEFT)
+        btn_test_conn.bind("<Enter>", lambda e, b=btn_test_conn: b.config(fg="#FF0000", bg="#200000"))
+        btn_test_conn.bind("<Leave>", lambda e, b=btn_test_conn: b.config(fg="#FF3333", bg="#100000"))
+
+        self.lbl_test_status = tk.Label(
+            test_frame, text="[ 状态: 未测试 / Ready ]", fg="#888888", bg="#000000",
+            font=("Microsoft YaHei", 8, "bold")
+        )
+        self.lbl_test_status.pack(side=tk.LEFT, padx=15)
+
+        api_frame.columnconfigure(1, weight=1)
+
+        # Custom Character & Slots Section
+        mid_frame = tk.Frame(self.splash_frame, bg="#000000")
+        mid_frame.pack(fill=tk.X, padx=80, pady=5)
+
+        # Custom character button on the left of separator/slots
+        self.btn_splash_settings = tk.Button(
+            mid_frame,
+            text=" ⚙ 自定义大脑皮层参数 / Custom Character Settings ",
+            fg="#FF3399",
+            bg="#0D0008",
+            activeforeground="#FF0099",
+            activebackground="#200015",
+            relief=tk.SOLID,
+            bd=1,
+            font=("Microsoft YaHei", 9, "bold"),
+            command=self._on_splash_settings_clicked
+        )
+        self.btn_splash_settings.pack(anchor=tk.CENTER, pady=(0, 10))
+        self.btn_splash_settings.bind("<Enter>", lambda e: self.btn_splash_settings.config(fg="#FF0099", bg="#200010"))
+        self.btn_splash_settings.bind("<Leave>", lambda e: self.btn_splash_settings.config(fg="#FF3399", bg="#0D0008"))
+
+        # LabelFrame for Save slots
+        slots_frame = tk.LabelFrame(
+            self.splash_frame,
+            text="  💾 脑机接口历史记忆载入 / Memory Slot Management  ",
+            fg="#00FF66",
+            bg="#000000",
+            font=("Consolas", 10, "bold"),
+            relief=tk.SOLID,
+            bd=1,
+            padx=15,
+            pady=8
+        )
+        slots_frame.pack(fill=tk.X, padx=80, pady=5)
+
+        slots_container = tk.Frame(slots_frame, bg="#000000")
+        slots_container.pack(fill=tk.X, pady=2)
+
+        for idx in range(1, 6):
+            fn = f"save_slot_{idx}.json"
+            slot_desc = f"BANK {idx} : [ VACANT SLOT ] - 空白记忆区间 - (Empty Memory Slot)"
+            has_save = False
+
+            if os.path.exists(fn):
+                has_save = True
+                try:
+                    with open(fn, "r", encoding="utf-8") as f:
+                        sdata = json.load(f)
+                    char_id = sdata.get("current_char_id", "saki")
+                    char_name = "纱希 (Saki)" if char_id == "saki" else f"自定义 ({char_id})"
+                    day = sdata.get("current_day", 1)
+                    favor = sdata.get("favorability", 50)
+                    sus = sdata.get("suspicion", 20)
+                    slot_desc = f"BANK {idx} : [ ACTIVE ] 第 {day} 天 | 好感: {favor}% 疑心: {sus}% | 神经宿主: {char_name}"
+                except Exception:
+                    slot_desc = f"BANK {idx} : [ CORRUPTED ] 已占用 (读取错误)"
+
+            slot_row = tk.Frame(slots_container, bg="#000000")
+            slot_row.pack(fill=tk.X, pady=3)
+
+            lbl_desc = tk.Label(
+                slot_row, text=slot_desc, fg="#00FF66" if has_save else "#333333", bg="#000000",
+                font=("Consolas", 9, "bold" if has_save else "normal"), anchor=tk.W
+            )
+            lbl_desc.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            def make_load_cmd(slot_num):
+                return lambda: self._load_slot_from_splash(slot_num)
+
+            btn_load = tk.Button(
+                slot_row, text=" 载入突触 ", fg="#00FF66" if has_save else "#333333", bg="#000000",
+                activeforeground="#00FF66", activebackground="#001805",
+                relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=12,
+                state=tk.NORMAL if has_save else tk.DISABLED,
+                command=make_load_cmd(idx)
+            )
+            btn_load.pack(side=tk.RIGHT)
+            if has_save:
+                btn_load.bind("<Enter>", lambda e, b=btn_load: b.config(fg="#00FF66", bg="#002208"))
+                btn_load.bind("<Leave>", lambda e, b=btn_load: b.config(fg="#00FF66", bg="#000000"))
+
+            if has_save:
+                def make_delete_cmd(slot_num):
+                    return lambda: self._delete_slot_from_splash(slot_num)
+                btn_delete = tk.Button(
+                    slot_row, text=" 删除 ", fg="#FF3333", bg="#000000",
+                    activeforeground="#FFFFFF", activebackground="#E74C3C",
+                    relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=8,
+                    command=make_delete_cmd(idx)
+                )
+                btn_delete.pack(side=tk.RIGHT, padx=(0, 6))
+                btn_delete.bind("<Enter>", lambda e, b=btn_delete: b.config(fg="#FFFFFF", bg="#800000"))
+                btn_delete.bind("<Leave>", lambda e, b=btn_delete: b.config(fg="#FF3333", bg="#000000"))
+
+    def _sync_api_from_splash(self):
+        """Sync values from splash screen API entries to self.config and save."""
+        if hasattr(self, "entry_splash_key"):
+            key_val = self.entry_splash_key.get_actual_value().strip()
+            self.config["api_key"] = key_val
+            if hasattr(self, "entry_key") and self.entry_key.winfo_exists():
+                self.entry_key.delete(0, tk.END)
+                self.entry_key.insert(0, key_val)
+                if key_val:
+                    self.entry_key.config(fg="#FF0000", show="*")
+                else:
+                    self.entry_key._show_placeholder()
+
+        if hasattr(self, "entry_splash_base"):
+            base_val = self.entry_splash_base.get_actual_value().strip()
+            self.config["api_base"] = base_val
+            if hasattr(self, "entry_base") and self.entry_base.winfo_exists():
+                self.entry_base.delete(0, tk.END)
+                self.entry_base.insert(0, base_val)
+                if base_val:
+                    self.entry_base.config(fg="#FF0000")
+                else:
+                    self.entry_base._show_placeholder()
+
+        save_config(self.config)
+
+    def _test_api_connection_from_settings(self):
+        key = self.entry_key.get_actual_value().strip()
+        base = self.entry_base.get_actual_value().strip() or "https://api.deepseek.com"
+
+        if not key:
+            messagebox.showwarning("测试失败", "请先在上方输入 API Key！")
+            return
+
+        self.btn_test_api_settings.config(text=" 测试中... ", state=tk.DISABLED)
+
+        def run_test():
+            import requests
+            url = f"{base.rstrip('/')}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            }
+            model = self.entry_model.get_actual_value().strip() or "deepseek-v4-flash"
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": "ping"}],
+                "max_tokens": 5,
+                "temperature": 0.0,
+            }
+
+            start_time = time.time()
+            try:
+                response = requests.post(
+                    url, headers=headers, json=payload, timeout=10,
+                    proxies={"http": None, "https": None}
+                )
+                elapsed = int((time.time() - start_time) * 1000)
+                if response.status_code == 200:
+                    result = ("SUCCESS", f"脑机突触链路连接成功！\n当前响应延迟: {elapsed}ms")
+                else:
+                    result = ("ERROR", f"联通性异常！HTTP 错误代码: {response.status_code}\n请检查您的 Key 或网络设置。")
+            except Exception as e:
+                result = ("ERROR", f"链路握手超时或网络地址无效：\n{e}")
+
+            def update_ui():
+                self.btn_test_api_settings.config(text=" 测试连接 ", state=tk.NORMAL)
+                if result[0] == "SUCCESS":
+                    messagebox.showinfo("测试成功", result[1])
+                else:
+                    messagebox.showerror("测试失败", result[1])
+            self.root.after(0, update_ui)
+
+        threading.Thread(target=run_test, daemon=True).start()
+
+    def _test_api_connection(self):
+        key = self.entry_splash_key.get_actual_value().strip()
+        base = self.entry_splash_base.get_actual_value().strip() or "https://api.deepseek.com"
+
+        if not key:
+            self.lbl_test_status.config(text="[ 状态: ⚠️ 请先输入 API Key ]", fg="#E67E22")
+            return
+
+        self.lbl_test_status.config(text="[ 状态: 📡 正在建立神经突触链路... ]", fg="#F1C40F")
+
+        # Start background test thread
+        thread = threading.Thread(target=self._run_api_test, args=(key, base), daemon=True)
+        thread.start()
+
+    def _run_api_test(self, key, base):
+        import requests
+        url = f"{base.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        }
+
+        model = self.config.get("model_name", "deepseek-v4-flash") or "deepseek-v4-flash"
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 5,
+            "temperature": 0.0,
+        }
+
+        start_time = time.time()
+        try:
+            response = requests.post(
+                url, headers=headers, json=payload, timeout=10,
+                proxies={"http": None, "https": None}
+            )
+            elapsed = int((time.time() - start_time) * 1000)
+
+            if response.status_code == 200:
+                status_text = f"[ 状态: 🟢 链路连接成功 ({elapsed}ms) ]"
+                status_color = "#2ECC71"
+            else:
+                status_text = f"[ 状态: 🔴 错误 {response.status_code} (请检查配置) ]"
+                status_color = "#E74C3C"
+        except Exception as e:
+            status_text = f"[ 状态: 🔴 链路超时或地址错误 ]"
+            status_color = "#E74C3C"
+
+        self.root.after(0, lambda: self.lbl_test_status.config(text=status_text, fg=status_color))
+
+    def _start_game_with_language(self, chosen_lang):
+        self._sync_api_from_splash()
+        chosen_lang = normalize_language(chosen_lang)
+        self.selected_language.set(chosen_lang)
+        self.state.cached_lang = chosen_lang  # step 2
+        self.user_explicitly_selected_lang = True
+
+        # Perform a complete reset of all game state, chat history, and visual effects to start fresh (HoI4 style)
+        self._restart_game()
+
+        self.config["selected_language"] = chosen_lang
+        self._load_language_default_voice(chosen_lang)
+        save_config(self.config)
+
+        self._update_ui_language()
+
+        if hasattr(self, "splash_frame") and self.splash_frame.winfo_exists():
+            self.splash_frame.destroy()
+
+    # ========================================================================
+
     # ========================================================================
     #  Fourth-Wall Break & Typing Hijack Mechanisms
     # ========================================================================
