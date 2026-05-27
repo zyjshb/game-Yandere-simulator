@@ -22,7 +22,7 @@
 - **语言自适应 TTS**：自动检测回复语言，切换对应的语音模型
 
 ### 语音合成 (TTS)
-- 集成 **GPT-SoVITS-v2pro**，纱希的每句话都会用病娇声线朗读
+- 集成 **GPT-SoVITS**，纱希的每句话都会用病娇声线朗读
 - 支持中日双语模型热切换（花火 / 米塔）
 - 程序化心跳背景音效
 
@@ -90,7 +90,7 @@ new_game/
 ### 可选
 | 依赖 | 用途 |
 |------|------|
-| **GPT-SoVITS-v2pro** | 语音合成服务（本地部署） |
+| **GPT-SoVITS** | 语音合成服务（本地部署） |
 | DeepSeek API Key | AI 对话（也可离线运行） |
 
 ---
@@ -119,7 +119,7 @@ pip install pygame Pillow requests
 
 ### 4. 配置语音合成（可选）
 
-需要本地部署 [GPT-SoVITS-v2pro](https://github.com/xxxxx/GPT-SoVITS-v2pro)。
+需要本地部署 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)。
 
 启动 GPT-SoVITS 服务后：
 - **TTS BASE**：`http://127.0.0.1:9880`
@@ -202,17 +202,17 @@ python main.py
 
 ## 依赖项目
 
-本项目语音合成功能依赖 **GPT-SoVITS-v2pro** 提供本地 TTS 服务。
+本项目语音合成功能依赖 **GPT-SoVITS** 提供本地 TTS 服务。
 
-### GPT-SoVITS-v2pro 部署简述
+### GPT-SoVITS 部署简述
 
-1. 克隆并安装 GPT-SoVITS-v2pro
+1. 克隆并安装 GPT-SoVITS：`git clone https://github.com/RVC-Boss/GPT-SoVITS.git`
 2. 准备参考音频（3-10 秒的干净人声 WAV）
 3. 训练或下载预训练模型权重
 4. 启动 API 服务：`python api_v2.py`（默认监听 `http://127.0.0.1:9880`）
 5. 在游戏配置面板中填入对应路径
 
-详细的 GPT-SoVITS 教程请参考其官方文档。
+详细的 GPT-SoVITS 教程请参考 [官方文档](https://github.com/RVC-Boss/GPT-SoVITS)。
 
 ---
 
