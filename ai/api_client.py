@@ -138,32 +138,132 @@ def fetch_api_response(chat_history, api_key, base_url, model_name,
             "temperature": 0.95,
         }
 
-        try:
-            response = requests.post(
-                url, headers=headers, json=payload, timeout=25,
-                proxies={"http": None, "https": None},
-            )
-        except Exception as conn_err:
-            err_str = str(conn_err).lower()
-            if "proxy" in err_str or "proxyerror" in err_str:
-                print("[Self-healing] Proxy error detected, retrying with direct connection...")
+        # Robust retry wrapper (up to 2 attempts, timeout=50s) to handle DeepSeek congestion
+        response = None
+        last_err = None
+        for attempt in range(1, 3):
+            if cycle_id != game_state.cycle_id:
+                return
+            try:
+                print(f"[API Request] Attempt {attempt} to fetch Saki's reply (timeout=50)...")
                 response = requests.post(
-                    url, headers=headers, json=payload, timeout=25,
+                    url, headers=headers, json=payload, timeout=50,
                     proxies={"http": None, "https": None},
                 )
+                if response.status_code == 200:
+                    break
+                else:
+                    raise Exception(f"HTTP status: {response.status_code}, body: {response.text}")
+            except Exception as e:
+                last_err = e
+                err_str = str(e).lower()
+                print(f"[API Request] Attempt {attempt} failed: {e}")
+                if "proxy" in err_str or "proxyerror" in err_str:
+                    print("[Self-healing] Proxy error detected, retrying next attempt with direct connection...")
+                time.sleep(1.0)
+
+        if response is None or response.status_code != 200:
+            if last_err:
+                raise last_err
             else:
-                raise conn_err
+                raise Exception("API request failed after retries.")
 
         if response.status_code == 200:
             if cycle_id != game_state.cycle_id:
                 return
             result_json = response.json()
             reply = result_json["choices"][0]["message"]["content"]
+
+            # ---- Check and Auto-Heal Translation if Required ----
+            lang = normalize_language(game_state.cached_lang)
+            user_lang = detect_language(game_state.last_user_input, lang)
+
+            if translation_required(lang, user_lang):
+                # Avoid circular import at top level
+                from ai.translator import parse_api_response
+                from resources.game_constants import has_terminal_parenthetical_translation
+
+                # Parse to see if translation is already present
+                parsed = parse_api_response(reply, game_state.last_user_input, game_state)
+                spoken_clean = parsed["spoken"].strip()
+
+                # Check if it has a terminal parenthetical translation
+                if not has_terminal_parenthetical_translation(spoken_clean, user_lang):
+                    # Make a quick secondary API call to translate the spoken text
+                    user_lang_name = "简体中文" if user_lang == "中文" else user_lang
+                    source_lang_name = "日本語" if lang == "日本語" else lang
+
+                    print(f"[Self-healing Translation] Translation missing from LLM response. Performing online translation via LLM...")
+
+                    translation_payload = {
+                        "model": model_name,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": (
+                                    f"You are a precise, immersive translator for Saki, a text adventure yandere character. "
+                                    f"Translate the following {source_lang_name} speech into natural, character-accurate {user_lang_name}. "
+                                    f"Keep Saki's yandere tone, sweet but dangerous style. "
+                                    f"Output ONLY the final translated text enclosed in full-width brackets `（ ）`, without any explanations, narration, or extra text."
+                                )
+                            },
+                            {
+                                "role": "user",
+                                "content": spoken_clean
+                            }
+                        ],
+                        "temperature": 0.5,
+                    }
+
+                    translation_text = None
+                    trans_last_err = None
+                    for trans_attempt in range(1, 3):
+                        if cycle_id != game_state.cycle_id:
+                            return
+                        try:
+                            print(f"[Self-healing Translation] Attempt {trans_attempt} to translate Saki's reply (timeout=30)...")
+                            trans_response = requests.post(
+                                url, headers=headers, json=translation_payload, timeout=30,
+                                proxies={"http": None, "https": None},
+                            )
+                            if trans_response.status_code == 200:
+                                trans_result = trans_response.json()
+                                translation_text = trans_result["choices"][0]["message"]["content"].strip()
+                                break
+                            else:
+                                raise Exception(f"HTTP status: {trans_response.status_code}, body: {trans_response.text}")
+                        except Exception as e:
+                            trans_last_err = e
+                            print(f"[Self-healing Translation] Attempt {trans_attempt} failed: {e}")
+                            time.sleep(1.0)
+
+                    if translation_text:
+                        # Ensure translation is enclosed in parentheses
+                        if not (translation_text.startswith("（") and translation_text.endswith("）")):
+                            translation_text = f"（{translation_text.strip('（）()')}）"
+                        print(f"[Self-healing Translation] Successfully generated online translation: {translation_text}")
+                    else:
+                        # Character-accurate immersive fallback messages for translation timeouts to maintain immersion
+                        print(f"[Self-healing Translation Error] Failed to generate translation online after retries: {trans_last_err}")
+                        if user_lang == "中文":
+                            translation_text = "（亲爱的……纱希刚才说的那些话，翻译好像在网络中迷路了。不过别担心，纱希的心意是永远不会迷路的哦……❤）"
+                        elif user_lang == "English":
+                            translation_text = "（My love... Saki's translation seems to have gotten lost in the network. But don't worry, Saki's heart will never lose its way to you...❤）"
+                        elif user_lang == "日本語":
+                            translation_text = "（あなた……紗希の翻訳がネットで迷子になっちゃったみたい。でも心配しないで、私の想いは絶対に迷子にならないから……❤）"
+                        else:
+                            translation_text = "（Translation loading...）"
+
+                    # Reconstruct the reply with translation
+                    think_part = f"<think>{parsed['think']}</think>\n" if parsed["think"] else ""
+
+                    delta_part = ""
+                    if parsed["delta"]:
+                        delta_part = f"\n||{json.dumps(parsed['delta'])}||"
+
+                    reply = f"{think_part}{spoken_clean}\n{translation_text}{delta_part}"
+
             ui_queue.put((cycle_id, "API_SUCCESS", reply))
-        else:
-            raise Exception(
-                f"HTTP status: {response.status_code}, body: {response.text}"
-            )
 
     except Exception as err:
         print(f"[API Request Error] {err}")
