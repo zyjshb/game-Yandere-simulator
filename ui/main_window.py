@@ -1153,7 +1153,7 @@ class MainWindow:
         if self.state.game_over:
             return
 
-        day_changed, new_day = self.state.advance_day()
+        day_changed, new_day = self.state.advance_day(self.state.last_user_input)
         if day_changed:
             lang = normalize_language(self.selected_language.get())
             loc = LOCALIZATION[lang]

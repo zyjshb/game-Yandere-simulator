@@ -200,7 +200,7 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
             "- escape_rate > 70: プレイヤーが脱走を企てていると強く疑いますが、キャラの口調は維持します。\n\n"
             "【AI 数値決定に関する特権合意】\n"
             f"{metric_prompt}\n"
-            "特別なクライマックスでない限り、安易にゲームオーバーにしないでください。"
+            "【重要】プレイヤーが明確に逃亡や裏切りを行わない限り、単なる日常会話や甘い対話、料理などのやり取りで安易に game_over を true にしたり、バッドエンド（bad ending）を宣言してゲームを終了しないでください。プレイヤーはあなたと非常に長く対話したいと望んでいます。"
         )
     elif selected_lang == "English":
         if needs_translation:
@@ -251,7 +251,7 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
             "- escape_rate > 70: Strongly suspects the player of escaping, but maintains Saki's role play.\n\n"
             "【AI NUMERICAL JURISDICTION SYSTEM】\n"
             f"{metric_prompt}\n"
-            "Unless it is a climax ending, do not end the game easily."
+            "[CRITICAL] Unless the player clearly attempts to escape or betray you, do not set game_over to true or declare a BAD END during sweet, warm, or ordinary domestic dialogues (such as cooking together, hugging, talking). The player wishes to have a very, very long conversation with you. Keep the domestic status quo."
         )
     else:
         if needs_translation:
@@ -303,7 +303,7 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
             "本地不再覆盖你的数值——你决定这轮加多少、扣多少，游戏状态由你掌控。\n"
             "delta 可以是正数也可以是负数，幅度由你根据玩家话语的冲击力自由裁量。\n"
             f"{build_metric_rules_prompt()}\n"
-            "没有特殊高潮时，不要轻易结束游戏。"
+            "【极重要】除非玩家做出明确的逃跑、攻击或彻底背叛行为，否则在普通的日常聊天、亲密互动（如做饭、拥抱、聊天等）中，绝对不允许将 game_over 设为 true 或宣告 BAD END 结局！玩家希望能与你进行非常非常长久、不被突然中断的对话。请极力保持日常羁绊状态。"
         )
 
 
@@ -409,8 +409,8 @@ class GameState:
     # Day advancement
     # ------------------------------------------------------------------
 
-    def advance_day(self):
-        """Increment dialogue count and advance the day if needed.
+    def advance_day(self, user_input=""):
+        """Increment dialogue count and advance the day if sleep/wake keywords are detected.
 
         Returns a tuple (day_changed: bool, new_day: int).
         """
@@ -418,10 +418,31 @@ class GameState:
             return (False, self.current_day)
 
         self.dialogue_count += 1
-        if self.dialogue_count >= 3:
-            self.dialogue_count = 0
-            self.current_day += 1
-            return (True, self.current_day)
+        
+        # Check for day advancement keywords in the user input
+        if user_input:
+            text_lower = user_input.lower()
+            
+            # Transition keywords indicating sleeping or waking up
+            day_keywords = [
+                # Sleep / Night (Chinese, English, Japanese)
+                "晚安", "睡觉", "去睡了", "睡了", "安安", "歇息", "入睡", "想睡", "躺下", "躺着", "歇歇",
+                "good night", "goodnight", "go to sleep", "go to bed", "sleepy", "time to sleep", "time for bed", "sleeping",
+                "おやすみ", "寝る", "寝ます", "ベッドに入る",
+                
+                # Wake / Morning (Chinese, English, Japanese)
+                "早安", "早上好", "早啊", "醒了", "起床", "起首", "睁眼", "新的一天",
+                "good morning", "goodmorning", "wake up", "woke up", "morning", "awake",
+                "おはよう", "起きた", "起きます"
+            ]
+            
+            # Simple keyword matching to advance the day
+            if any(kw in text_lower for kw in day_keywords):
+                self.dialogue_count = 0
+                self.current_day += 1
+                print(f"[Day Advanced] Keyword detected in: '{user_input}'. Day advanced to {self.current_day}")
+                return (True, self.current_day)
+
         return (False, self.current_day)
 
     # ------------------------------------------------------------------
