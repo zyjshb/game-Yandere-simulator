@@ -4,6 +4,7 @@ __pycache__/
 .claude/
 yandere_config.json
 temp_saki_*.wav
+heartbeat.wav
 *.ckpt
 *.pth
 models/
