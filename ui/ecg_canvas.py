@@ -12,6 +12,15 @@ import random
 import tkinter as tk
 
 from visual_fx import ParticleEngine
+_FONT_MONO = ("Consolas", "DejaVu Sans Mono", "Liberation Mono", "monospace")
+def _fmono(size, bold=False):
+    from tkinter import font as _tkfont
+    families = set(_tkfont.families())
+    for name in _FONT_MONO:
+        if name in families:
+            return (name, size, "bold" if bold else "normal")
+    return ("monospace", size, "bold" if bold else "normal")
+
 
 
 class ECGCanvas(tk.Canvas):
@@ -190,7 +199,7 @@ class ECGCanvas(tk.Canvas):
             self.create_rectangle(width / 2 - 120, 5, width / 2 + 120, height - 5,
                                   fill="#1A0000", outline="#FF0000", width=2)
             self.create_text(width / 2, height / 2, text="FATAL ERROR: HEART OVERLOAD",
-                             fill="#FF0000", font=("Consolas", 10, "bold"))
+                             fill="#FF0000", font=_fmono(10, bold=True))
 
         self._after_id = self.after(30, self._update_ecg)
 

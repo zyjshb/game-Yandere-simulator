@@ -67,6 +67,54 @@ from audio.tts_client import probe_tts_endpoint, synthesize_speech
 from audio.heartbeat_gen import generate_heartbeat_wav
 
 from visual_fx import ProceduralFX, ParticleEngine, OverlayManager, get_widget_size
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Cross-platform font fallback (Linux lacks Microsoft YaHei / Consolas)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_FONT_CJK = (
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    "WenQuanYi Micro Hei",
+    "SimHei",
+    "sans-serif",
+)
+_FONT_MONO = (
+    "Consolas",
+    "DejaVu Sans Mono",
+    "Liberation Mono",
+    "monospace",
+)
+_FONT_UI = (
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+    "sans-serif",
+)
+
+def _fcjk(size, bold=False):
+    from tkinter import font as _tkfont
+    families = set(_tkfont.families())
+    for name in _FONT_CJK:
+        if name in families:
+            return (name, size, "bold" if bold else "normal")
+    return ("sans-serif", size, "bold" if bold else "normal")
+
+def _fmono(size, bold=False):
+    from tkinter import font as _tkfont
+    families = set(_tkfont.families())
+    for name in _FONT_MONO:
+        if name in families:
+            return (name, size, "bold" if bold else "normal")
+    return ("monospace", size, "bold" if bold else "normal")
+
+def _fui(size, bold=False):
+    from tkinter import font as _tkfont
+    families = set(_tkfont.families())
+    for name in _FONT_UI:
+        if name in families:
+            return (name, size, "bold" if bold else "normal")
+    return ("sans-serif", size, "bold" if bold else "normal")
+
 from visual_fx.glitch_controller import GlitchController
 
 from ui.styles import configure_styles
@@ -1200,7 +1248,7 @@ class MainWindow:
             text=title,
             fg=color,
             bg="#000000",
-            font=("Microsoft YaHei", 16, "bold"),
+            font=_fcjk(16, bold=True),
             wraplength=520,
         )
         lbl_end_title.pack(pady=(100, 15))
@@ -1222,7 +1270,7 @@ class MainWindow:
             text=story,
             fg="#DDDDDD",
             bg="#000000",
-            font=("Microsoft YaHei", 10),
+            font=_fcjk(10),
             justify=tk.LEFT,
             anchor=tk.W,
             wraplength=520,
@@ -1238,7 +1286,7 @@ class MainWindow:
             activebackground="#200000",
             relief=tk.SOLID,
             bd=1,
-            font=("Microsoft YaHei", 11, "bold"),
+            font=_fcjk(11, bold=True),
             command=self._restart_game,
         )
         btn_restart.pack(pady=(20, 0), ipadx=20, ipady=6)
@@ -1652,7 +1700,7 @@ class MainWindow:
 
         lbl_title = tk.Label(
             pop, text="[ ⚙ 自定义神经角色脑回路配置 ]", fg="#FF0000", bg="#000000",
-            font=("Consolas", 12, "bold")
+            font=_fmono(12, bold=True)
         )
         lbl_title.pack(pady=15)
 
@@ -1662,18 +1710,18 @@ class MainWindow:
         row_idx = 0
         def add_field(label_text, is_large=False):
             nonlocal row_idx
-            lbl = tk.Label(form, text=label_text, fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+            lbl = tk.Label(form, text=label_text, fg="#8A0303", bg="#000000", font=_fcjk(9, bold=True), anchor=tk.W)
             lbl.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
 
             if is_large:
                 text_widget = tk.Text(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
-                                     relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), height=3, width=50, wrap=tk.WORD)
+                                     relief=tk.SOLID, bd=1, font=_fcjk(9), height=3, width=50, wrap=tk.WORD)
                 text_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
                 row_idx += 1
                 return text_widget
             else:
                 entry_widget = tk.Entry(form, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000",
-                                       relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), width=50)
+                                       relief=tk.SOLID, bd=1, font=_fcjk(9), width=50)
                 entry_widget.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
                 row_idx += 1
                 return entry_widget
@@ -1687,11 +1735,11 @@ class MainWindow:
         ent_color = add_field("聊天文字颜色 (Color):")
 
         # WAV Reference with browse
-        lbl_wav = tk.Label(form, text="参考音频 (.wav):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_wav = tk.Label(form, text="参考音频 (.wav):", fg="#8A0303", bg="#000000", font=_fcjk(9, bold=True), anchor=tk.W)
         lbl_wav.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
         wav_frame = tk.Frame(form, bg="#000000")
         wav_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
-        ent_wav = tk.Entry(wav_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_wav = tk.Entry(wav_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=_fcjk(9))
         ent_wav.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         def browse_wav():
@@ -1699,40 +1747,40 @@ class MainWindow:
             if fn:
                 ent_wav.delete(0, tk.END)
                 ent_wav.insert(0, fn)
-        btn_browse = tk.Button(wav_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_wav)
+        btn_browse = tk.Button(wav_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=_fcjk(8), command=browse_wav)
         btn_browse.pack(side=tk.RIGHT, padx=(5, 0))
         row_idx += 1
 
         ent_text = add_field("参考音频文本 (Text):")
 
         # Weights paths
-        lbl_gpt = tk.Label(form, text="GPT 权重 (.ckpt):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_gpt = tk.Label(form, text="GPT 权重 (.ckpt):", fg="#8A0303", bg="#000000", font=_fcjk(9, bold=True), anchor=tk.W)
         lbl_gpt.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
         gpt_frame = tk.Frame(form, bg="#000000")
         gpt_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
-        ent_gpt = tk.Entry(gpt_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_gpt = tk.Entry(gpt_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=_fcjk(9))
         ent_gpt.pack(side=tk.LEFT, fill=tk.X, expand=True)
         def browse_gpt():
             fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.ckpt")])
             if fn:
                 ent_gpt.delete(0, tk.END)
                 ent_gpt.insert(0, fn)
-        btn_bgpt = tk.Button(gpt_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_gpt)
+        btn_bgpt = tk.Button(gpt_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=_fcjk(8), command=browse_gpt)
         btn_bgpt.pack(side=tk.RIGHT, padx=(5, 0))
         row_idx += 1
 
-        lbl_sovits = tk.Label(form, text="SoVITS 权重 (.pth):", fg="#8A0303", bg="#000000", font=("Microsoft YaHei", 9, "bold"), anchor=tk.W)
+        lbl_sovits = tk.Label(form, text="SoVITS 权重 (.pth):", fg="#8A0303", bg="#000000", font=_fcjk(9, bold=True), anchor=tk.W)
         lbl_sovits.grid(row=row_idx, column=0, sticky=tk.W, pady=3)
         sovits_frame = tk.Frame(form, bg="#000000")
         sovits_frame.grid(row=row_idx, column=1, sticky=tk.EW, padx=10, pady=3)
-        ent_sovits = tk.Entry(sovits_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9))
+        ent_sovits = tk.Entry(sovits_frame, bg="#0D0000", fg="#FF3399", insertbackground="#FF0000", relief=tk.SOLID, bd=1, font=_fcjk(9))
         ent_sovits.pack(side=tk.LEFT, fill=tk.X, expand=True)
         def browse_sovits():
             fn = filedialog.askopenfilename(filetypes=[("Weights files", "*.pth")])
             if fn:
                 ent_sovits.delete(0, tk.END)
                 ent_sovits.insert(0, fn)
-        btn_bsovits = tk.Button(sovits_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8), command=browse_sovits)
+        btn_bsovits = tk.Button(sovits_frame, text="浏览", fg="#8A0303", bg="#0D0000", relief=tk.SOLID, bd=1, font=_fcjk(8), command=browse_sovits)
         btn_bsovits.pack(side=tk.RIGHT, padx=(5, 0))
         row_idx += 1
 
@@ -1785,7 +1833,7 @@ class MainWindow:
 
         btn_save = tk.Button(
             pop, text="保存角色配置", fg="#2ECC71", bg="#001F00", activeforeground="#2ECC71", activebackground="#053005",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 10, "bold"), width=20, height=2,
+            relief=tk.SOLID, bd=1, font=_fcjk(10, bold=True), width=20, height=2,
             command=save_custom_char
         )
         btn_save.pack(pady=15)
@@ -1907,7 +1955,7 @@ class MainWindow:
             text="纱希 (Saki) - Terminal A.I.",
             fg="#FF0033",
             bg="#000000",
-            font=("Consolas", 26, "bold"),
+            font=_fmono(26, bold=True),
         )
         lbl_splash_title.pack(pady=(40, 5))
 
@@ -1916,7 +1964,7 @@ class MainWindow:
             text="● SYSTEM OVERLORD STATUS: ONLINE  |  NEURAL COUPLING STABLE",
             fg="#00FF66",
             bg="#000000",
-            font=("Consolas", 8, "bold")
+            font=_fmono(8, bold=True)
         )
         lbl_splash_sys_status.pack(pady=(0, 15))
 
@@ -1925,7 +1973,7 @@ class MainWindow:
             text="[ 请选择与纱希脑机接口建立连接的语言 ]\n[ Select Saki's Interface & Voice Language ]",
             fg="#8A0303",
             bg="#000000",
-            font=("Microsoft YaHei", 10, "bold"),
+            font=_fcjk(10, bold=True),
             justify=tk.CENTER,
         )
         lbl_splash_subtitle.pack(pady=(0, 15))
@@ -1949,7 +1997,7 @@ class MainWindow:
                 activebackground="#150000",
                 relief=tk.SOLID,
                 bd=1,
-                font=("Microsoft YaHei", 11, "bold"),
+                font=_fcjk(11, bold=True),
                 width=18,
                 height=2,
                 command=lambda l=lang_val: self._start_game_with_language(l),
@@ -1966,7 +2014,7 @@ class MainWindow:
             text="  🛡️ 脑机接口通信协议配置 / Synapse Connection Settings  ",
             fg="#FF0033",
             bg="#000000",
-            font=("Consolas", 10, "bold"),
+            font=_fmono(10, bold=True),
             relief=tk.SOLID,
             bd=1,
             padx=15,
@@ -1977,7 +2025,7 @@ class MainWindow:
         # Grid inside LabelFrame
         lbl_splash_key = tk.Label(
             api_frame, text="API Key:", fg="#888888", bg="#000000",
-            font=("Consolas", 9, "bold"), anchor=tk.W, width=10
+            font=_fmono(9, bold=True), anchor=tk.W, width=10
         )
         lbl_splash_key.grid(row=0, column=0, sticky=tk.W, pady=3)
 
@@ -1985,7 +2033,7 @@ class MainWindow:
             api_frame, placeholder="在此输入你的 API Key (Enter API Key)",
             placeholder_color="#444444", default_color="#FF0000", show_char="*",
             bg="#0A0000", fg="#FF3333", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9), width=50
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9), width=50
         )
         self.entry_splash_key.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=3)
         if self.config.get("api_key"):
@@ -1995,7 +2043,7 @@ class MainWindow:
 
         lbl_splash_base = tk.Label(
             api_frame, text="API Base:", fg="#888888", bg="#000000",
-            font=("Consolas", 9, "bold"), anchor=tk.W, width=10
+            font=_fmono(9, bold=True), anchor=tk.W, width=10
         )
         lbl_splash_base.grid(row=1, column=0, sticky=tk.W, pady=3)
 
@@ -2003,7 +2051,7 @@ class MainWindow:
             api_frame, placeholder="默认: https://api.deepseek.com (Default URL)",
             placeholder_color="#444444", default_color="#FF0000",
             bg="#0A0000", fg="#FF3333", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9), width=50
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9), width=50
         )
         self.entry_splash_base.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=3)
         if self.config.get("api_base"):
@@ -2018,7 +2066,7 @@ class MainWindow:
         btn_test_conn = tk.Button(
             test_frame, text=" 📡 测试 API 联通性 / Test Connection ", fg="#FF3333", bg="#100000",
             activeforeground="#FF0000", activebackground="#200000",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"),
+            relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True),
             command=self._test_api_connection
         )
         btn_test_conn.pack(side=tk.LEFT)
@@ -2027,7 +2075,7 @@ class MainWindow:
 
         self.lbl_test_status = tk.Label(
             test_frame, text="[ 状态: 未测试 / Ready ]", fg="#888888", bg="#000000",
-            font=("Microsoft YaHei", 8, "bold")
+            font=_fcjk(8, bold=True)
         )
         self.lbl_test_status.pack(side=tk.LEFT, padx=15)
 
@@ -2047,7 +2095,7 @@ class MainWindow:
             activebackground="#200015",
             relief=tk.SOLID,
             bd=1,
-            font=("Microsoft YaHei", 9, "bold"),
+            font=_fcjk(9, bold=True),
             command=self._on_splash_settings_clicked
         )
         self.btn_splash_settings.pack(anchor=tk.CENTER, pady=(0, 10))
@@ -2060,7 +2108,7 @@ class MainWindow:
             text="  💾 脑机接口历史记忆载入 / Memory Slot Management  ",
             fg="#00FF66",
             bg="#000000",
-            font=("Consolas", 10, "bold"),
+            font=_fmono(10, bold=True),
             relief=tk.SOLID,
             bd=1,
             padx=15,
@@ -2095,7 +2143,7 @@ class MainWindow:
 
             lbl_desc = tk.Label(
                 slot_row, text=slot_desc, fg="#00FF66" if has_save else "#333333", bg="#000000",
-                font=("Consolas", 9, "bold" if has_save else "normal"), anchor=tk.W
+                font=_fmono(9, bold=has_save), anchor=tk.W
             )
             lbl_desc.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
@@ -2105,7 +2153,7 @@ class MainWindow:
             btn_load = tk.Button(
                 slot_row, text=" 载入突触 ", fg="#00FF66" if has_save else "#333333", bg="#000000",
                 activeforeground="#00FF66", activebackground="#001805",
-                relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=12,
+                relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True), width=12,
                 state=tk.NORMAL if has_save else tk.DISABLED,
                 command=make_load_cmd(idx)
             )
@@ -2120,7 +2168,7 @@ class MainWindow:
                 btn_delete = tk.Button(
                     slot_row, text=" 删除 ", fg="#FF3333", bg="#000000",
                     activeforeground="#FFFFFF", activebackground="#E74C3C",
-                    relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=8,
+                    relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True), width=8,
                     command=make_delete_cmd(idx)
                 )
                 btn_delete.pack(side=tk.RIGHT, padx=(0, 6))
@@ -2431,7 +2479,7 @@ class MainWindow:
                 text=LOCALIZATION[normalize_language(self.selected_language.get())]["anti_escape"],
                 fg="#FF0000",
                 bg="#1A0000",
-                font=("Microsoft YaHei", 16, "bold"),
+                font=_fcjk(16, bold=True),
                 justify=tk.CENTER,
             )
             lbl_warning.pack(expand=True)
@@ -2557,7 +2605,7 @@ class MainWindow:
 
         lbl_header = tk.Label(
             pop, text="[ 神经同步断开与存档面板 / Save Slots ]", fg="#FF0000", bg="#000000",
-            font=("Consolas", 14, "bold")
+            font=_fmono(14, bold=True)
         )
         lbl_header.pack(pady=15)
 
@@ -2604,7 +2652,7 @@ class MainWindow:
             if occupied_count >= 5:
                 lbl_warning = tk.Label(
                     slots_frame, text="【警告】所有记忆槽位已满！保存进度将覆盖选中的旧存档。",
-                    fg="#FF3333", bg="#000000", font=("Microsoft YaHei", 9, "bold"), wrap=480, justify=tk.LEFT
+                    fg="#FF3333", bg="#000000", font=_fcjk(9, bold=True), wrap=480, justify=tk.LEFT
                 )
                 lbl_warning.pack(fill=tk.X, pady=(0, 10))
 
@@ -2618,14 +2666,14 @@ class MainWindow:
                     sf, text=f"Slot {idx}:", variable=selected_slot_var, value=idx,
                     fg="#FF3399", bg="#000000", selectcolor="#000000",
                     activeforeground="#FF0000", activebackground="#000000",
-                    font=("Consolas", 10, "bold"), width=9, anchor=tk.W
+                    font=_fmono(10, bold=True), width=9, anchor=tk.W
                 )
                 rb.pack(side=tk.LEFT)
 
                 info_fg = "#FF3399" if has_save_dict[idx] else "#555555"
                 lbl_info = tk.Label(
                     sf, text=slot_infos[idx], fg=info_fg, bg="#000000",
-                    font=("Microsoft YaHei", 9), anchor=tk.W
+                    font=_fcjk(9), anchor=tk.W
                 )
                 lbl_info.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
 
@@ -2635,7 +2683,7 @@ class MainWindow:
                     btn_del = tk.Button(
                         sf, text="删除", fg="#FF3333", bg="#0D0000",
                         activeforeground="#FFFFFF", activebackground="#220000",
-                        relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"), width=6,
+                        relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True), width=6,
                         command=make_del_cmd(idx)
                     )
                     btn_del.pack(side=tk.RIGHT)
@@ -2678,7 +2726,7 @@ class MainWindow:
         btn_save_ret = tk.Button(
             bf, text="保存并返回主菜单", fg="#2ECC71", bg="#0D0000",
             activeforeground="#FFFFFF", activebackground="#27AE60",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9, "bold"), width=16,
+            relief=tk.SOLID, bd=1, font=_fcjk(9, bold=True), width=16,
             command=save_and_return
         )
         btn_save_ret.pack(side=tk.LEFT, padx=(30, 10))
@@ -2686,7 +2734,7 @@ class MainWindow:
         btn_direct_exit = tk.Button(
             bf, text="直接退出（不保存）", fg="#FF3333", bg="#0D0000",
             activeforeground="#FFFFFF", activebackground="#C0392B",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9, "bold"), width=16,
+            relief=tk.SOLID, bd=1, font=_fcjk(9, bold=True), width=16,
             command=lambda: [pop.destroy(), self._disconnect_to_splash()]
         )
         btn_direct_exit.pack(side=tk.LEFT, padx=10)
@@ -2694,7 +2742,7 @@ class MainWindow:
         btn_cancel = tk.Button(
             bf, text="返回", fg="#888888", bg="#0D0D0D",
             activeforeground="#FFFFFF", activebackground="#222222",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 9), width=10,
+            relief=tk.SOLID, bd=1, font=_fcjk(9), width=10,
             command=pop.destroy
         )
         btn_cancel.pack(side=tk.RIGHT, padx=30)
@@ -3023,7 +3071,7 @@ class MainWindow:
                 word = random.choice(words)
                 flood_canvas.create_text(
                     rx, ry, text=word, fill=color,
-                    font=("Microsoft YaHei", size, "bold"),
+                    font=_fcjk(size, bold=True),
                     anchor=tk.NW,
                 )
         except Exception as err:
@@ -3110,7 +3158,7 @@ class MainWindow:
 
             title_lbl = tk.Label(
                 title_bar, text="Fatal Error", fg="#FFFFFF", bg="#000080",
-                font=("MS Sans Serif", 9, "bold"), anchor=tk.W,
+                font=_fui(9, bold=True), anchor=tk.W,
             )
             title_lbl.pack(side=tk.LEFT, padx=3, pady=1)
 
@@ -3125,7 +3173,7 @@ class MainWindow:
             close_btn = tk.Button(
                 title_bar, text="X", bg="#D4D0C8", fg="#000000",
                 activebackground="#D4D0C8", activeforeground="#000000",
-                font=("MS Sans Serif", 7, "bold"), bd=1, relief=tk.RAISED,
+                font=_fui(7, bold=True), bd=1, relief=tk.RAISED,
                 command=on_close, width=2, height=1,
             )
             close_btn.pack(side=tk.RIGHT, padx=2, pady=1)
@@ -3150,7 +3198,7 @@ class MainWindow:
 
             msg_lbl = tk.Label(
                 content_frame, text=msg_text, bg="#D4D0C8", fg="#000000",
-                font=("MS Sans Serif", 9), justify=tk.LEFT, anchor=tk.W,
+                font=_fui(9), justify=tk.LEFT, anchor=tk.W,
             )
             msg_lbl.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -3160,7 +3208,7 @@ class MainWindow:
             ok_btn = tk.Button(
                 btn_frame, text="OK", bg="#D4D0C8", fg="#000000",
                 activebackground="#E0E0E0", activeforeground="#000000",
-                font=("MS Sans Serif", 9), bd=2, relief=tk.RAISED,
+                font=_fui(9), bd=2, relief=tk.RAISED,
                 width=8, command=on_close,
             )
             ok_btn.pack(anchor=tk.CENTER)
@@ -3301,7 +3349,7 @@ class MainWindow:
                 text=chunk,
                 fg="#FF0000",
                 bg="#000000",
-                font=("Microsoft YaHei", font_size, "bold"),
+                font=_fcjk(font_size, bold=True),
                 bd=0,
                 highlightthickness=0,
             )
@@ -3640,7 +3688,7 @@ class MainWindow:
         texts = glitch_text(self.selected_language.get(), "popup")
         lbl = tk.Label(
             popup, text=random.choice(texts), fg="#FF0000", bg="#000000",
-            font=("Microsoft YaHei", 18, "bold"),
+            font=_fcjk(18, bold=True),
         )
         lbl.pack(padx=20, pady=10)
         self.root.after(80, lambda: popup.destroy())
@@ -3678,7 +3726,7 @@ class MainWindow:
             suff_frame,
             text=glitch_text(self.selected_language.get(), "suffocation"),
             fg="#FF0000", bg="#000000",
-            font=("Microsoft YaHei", 24, "bold"),
+            font=_fcjk(24, bold=True),
         )
         lbl_eyes.pack(expand=True)
         self.root.after(300, lambda: suff_frame.destroy())
@@ -3769,14 +3817,14 @@ class MainWindow:
                 day=self.state.current_day
             ),
             fg="#FF0000", bg="#0D0000",
-            font=("Microsoft YaHei", 12, "bold"),
+            font=_fcjk(12, bold=True),
         )
         self.lbl_day.pack(side=tk.LEFT, padx=15, pady=8)
 
         self.btn_api_toggle = tk.Button(
             self.status_bar, text="⚙ API", fg="#8A0303", bg="#0D0000",
             activeforeground="#FF0000", activebackground="#0D0000",
-            relief=tk.FLAT, bd=0, font=("Consolas", 9, "bold"),
+            relief=tk.FLAT, bd=0, font=_fmono(9, bold=True),
             command=self._toggle_settings,
         )
         self.btn_api_toggle.pack(side=tk.LEFT, padx=10)
@@ -3789,7 +3837,7 @@ class MainWindow:
         self.favor_frame.grid(row=0, column=0, sticky=tk.E, padx=8, pady=2)
         self.lbl_favor_title = tk.Label(
             self.favor_frame, text="好感 ❤️", fg="#CC0000", bg="#0D0000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_favor_title.pack(side=tk.LEFT, padx=2)
         self.bar_favor = ttk.Progressbar(
@@ -3800,7 +3848,7 @@ class MainWindow:
         self.bar_favor["value"] = self.state.favorability
         self.lbl_favor_val = tk.Label(
             self.favor_frame, text=f"{self.state.favorability}",
-            fg="#CC0000", bg="#0D0000", font=("Consolas", 9, "bold"), width=3,
+            fg="#CC0000", bg="#0D0000", font=_fmono(9, bold=True), width=3,
         )
         self.lbl_favor_val.pack(side=tk.LEFT, padx=2)
 
@@ -3809,7 +3857,7 @@ class MainWindow:
         self.sus_frame.grid(row=0, column=1, sticky=tk.E, padx=8, pady=2)
         self.lbl_sus_title = tk.Label(
             self.sus_frame, text="疑心 👁️", fg="#8A0303", bg="#0D0000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_sus_title.pack(side=tk.LEFT, padx=2)
         self.bar_sus = ttk.Progressbar(
@@ -3820,7 +3868,7 @@ class MainWindow:
         self.bar_sus["value"] = self.state.suspicion
         self.lbl_sus_val = tk.Label(
             self.sus_frame, text=f"{self.state.suspicion}",
-            fg="#8A0303", bg="#0D0000", font=("Consolas", 9, "bold"), width=3,
+            fg="#8A0303", bg="#0D0000", font=_fmono(9, bold=True), width=3,
         )
         self.lbl_sus_val.pack(side=tk.LEFT, padx=2)
 
@@ -3829,7 +3877,7 @@ class MainWindow:
         self.esc_frame.grid(row=0, column=2, sticky=tk.E, padx=8, pady=2)
         self.lbl_esc_title = tk.Label(
             self.esc_frame, text="逃脱 🚪", fg="#2ECC71", bg="#0D0000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_esc_title.pack(side=tk.LEFT, padx=2)
         self.bar_esc = ttk.Progressbar(
@@ -3840,7 +3888,7 @@ class MainWindow:
         self.bar_esc["value"] = self.state.escape_rate
         self.lbl_esc_val = tk.Label(
             self.esc_frame, text=f"{self.state.escape_rate}%",
-            fg="#2ECC71", bg="#0D0000", font=("Consolas", 9, "bold"), width=4,
+            fg="#2ECC71", bg="#0D0000", font=_fmono(9, bold=True), width=4,
         )
         self.lbl_esc_val.pack(side=tk.LEFT, padx=2)
 
@@ -3850,14 +3898,14 @@ class MainWindow:
 
         self.lbl_title = tk.Label(
             self.top_bar, text="[ 纱希的神经意识接口 ]",
-            fg="#444444", bg="#000000", font=("Consolas", 9, "bold"),
+            fg="#444444", bg="#000000", font=_fmono(9, bold=True),
         )
         self.lbl_title.pack(side=tk.LEFT, pady=2)
 
         self.btn_toggle_settings = tk.Button(
             self.top_bar, text="[ 展开配置通道 ]", fg="#666666", bg="#000000",
             activeforeground="#FF0000", activebackground="#000000",
-            relief=tk.FLAT, bd=0, font=("Microsoft YaHei", 9),
+            relief=tk.FLAT, bd=0, font=_fcjk(9),
             command=self._toggle_settings,
         )
         self.btn_toggle_settings.pack(side=tk.RIGHT, pady=2)
@@ -3867,14 +3915,14 @@ class MainWindow:
 
         self.lbl_api_key_title = tk.Label(
             self.settings_frame, text="API KEY:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_api_key_title.grid(row=0, column=0, sticky=tk.W, padx=10, pady=2)
         self.entry_key = PlaceholderEntry(
             self.settings_frame, placeholder="在此输入你的 API Key",
             placeholder_color="#333333", default_color="#FF0000", show_char="*",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_key.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=2)
         if self.config.get("api_key"):
@@ -3884,7 +3932,7 @@ class MainWindow:
 
         self.lbl_api_base_title = tk.Label(
             self.settings_frame, text="API BASE:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_api_base_title.grid(row=1, column=0, sticky=tk.W, padx=10, pady=2)
         base_frame = tk.Frame(self.settings_frame, bg="#000000")
@@ -3894,7 +3942,7 @@ class MainWindow:
             base_frame, placeholder="默认: https://api.deepseek.com",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_base.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
         if self.config.get("api_base"):
@@ -3905,7 +3953,7 @@ class MainWindow:
         self.btn_test_api_settings = tk.Button(
             base_frame, text=" 测试连接 ", fg="#8A0303", bg="#0D0000",
             activeforeground="#FF0000", activebackground="#150000",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"),
+            relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True),
             command=self._test_api_connection_from_settings,
         )
         self.btn_test_api_settings.pack(side=tk.RIGHT, padx=(5, 0))
@@ -3914,14 +3962,14 @@ class MainWindow:
 
         self.lbl_model_name_title = tk.Label(
             self.settings_frame, text="MODEL NAME:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_model_name_title.grid(row=2, column=0, sticky=tk.W, padx=10, pady=2)
         self.entry_model = PlaceholderEntry(
             self.settings_frame, placeholder="默认: deepseek-v4-flash",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_model.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=2)
         if self.config.get("model_name"):
@@ -3932,14 +3980,14 @@ class MainWindow:
         # TTS BASE
         self.lbl_tts_base_title = tk.Label(
             self.settings_frame, text="TTS BASE:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_tts_base_title.grid(row=3, column=0, sticky=tk.W, padx=10, pady=2)
         self.entry_tts_url = PlaceholderEntry(
             self.settings_frame, placeholder="默认: http://127.0.0.1:9880",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_tts_url.grid(row=3, column=1, sticky=tk.EW, padx=5, pady=2)
         if self.config.get("gpt_sovits_url"):
@@ -3950,7 +3998,7 @@ class MainWindow:
         # 参考音频
         self.lbl_refer_wav_title = tk.Label(
             self.settings_frame, text="参考音频:", fg="#666666", bg="#000000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_refer_wav_title.grid(row=4, column=0, sticky=tk.W, padx=10, pady=2)
         ref_frame = tk.Frame(self.settings_frame, bg="#000000")
@@ -3960,7 +4008,7 @@ class MainWindow:
             ref_frame, placeholder="选择参考音频 (.wav)",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_refer_wav.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
         if self.config.get("refer_wav_path"):
@@ -3977,7 +4025,7 @@ class MainWindow:
         self.btn_browse_ref = tk.Button(
             ref_frame, text=" 浏览 ", fg="#8A0303", bg="#0D0000",
             activeforeground="#FF0000", activebackground="#150000",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8),
+            relief=tk.SOLID, bd=1, font=_fcjk(8),
             command=self._browse_refer_wav,
         )
         self.btn_browse_ref.pack(side=tk.RIGHT, padx=(5, 0))
@@ -3985,14 +4033,14 @@ class MainWindow:
         # 参考文本
         self.lbl_prompt_text_title = tk.Label(
             self.settings_frame, text="参考文本:", fg="#666666", bg="#000000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_prompt_text_title.grid(row=5, column=0, sticky=tk.W, padx=10, pady=2)
         self.entry_prompt_text = PlaceholderEntry(
             self.settings_frame, placeholder="在此输入参考音频对应的中文文字内容",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Microsoft YaHei", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fcjk(9),
         )
         self.entry_prompt_text.grid(row=5, column=1, sticky=tk.EW, padx=5, pady=2)
         if self.config.get("prompt_text"):
@@ -4007,7 +4055,7 @@ class MainWindow:
         # GPT 模型
         self.lbl_gpt_weights_title = tk.Label(
             self.settings_frame, text="GPT模型:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_gpt_weights_title.grid(row=6, column=0, sticky=tk.W, padx=10, pady=2)
         gpt_frame = tk.Frame(self.settings_frame, bg="#000000")
@@ -4017,7 +4065,7 @@ class MainWindow:
             gpt_frame, placeholder="选择 GPT 模型权重 (.ckpt)",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_gpt_weights.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
         if self.config.get("gpt_weights_path"):
@@ -4028,7 +4076,7 @@ class MainWindow:
         self.btn_browse_gpt = tk.Button(
             gpt_frame, text=" 浏览 ", fg="#8A0303", bg="#0D0000",
             activeforeground="#FF0000", activebackground="#150000",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8),
+            relief=tk.SOLID, bd=1, font=_fcjk(8),
             command=self._browse_gpt_weights,
         )
         self.btn_browse_gpt.pack(side=tk.LEFT, padx=(5, 0))
@@ -4036,7 +4084,7 @@ class MainWindow:
         self.btn_load_gpt = tk.Button(
             gpt_frame, text=" 热加载 ", fg="#2ECC71", bg="#0D0000",
             activeforeground="#2ECC71", activebackground="#051A05",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"),
+            relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True),
             command=lambda: self._async_load_weights("gpt", self.entry_gpt_weights.get_actual_value()),
         )
         self.btn_load_gpt.pack(side=tk.RIGHT, padx=(5, 0))
@@ -4044,7 +4092,7 @@ class MainWindow:
         # SoVITS 模型
         self.lbl_sovits_weights_title = tk.Label(
             self.settings_frame, text="SoVITS模型:", fg="#666666", bg="#000000",
-            font=("Consolas", 9),
+            font=_fmono(9),
         )
         self.lbl_sovits_weights_title.grid(row=7, column=0, sticky=tk.W, padx=10, pady=2)
         sovits_frame = tk.Frame(self.settings_frame, bg="#000000")
@@ -4054,7 +4102,7 @@ class MainWindow:
             sovits_frame, placeholder="选择 SoVITS 模型权重 (.pth)",
             placeholder_color="#333333", default_color="#FF0000",
             bg="#0D0000", fg="#FF0000", insertbackground="#FF0000",
-            relief=tk.SOLID, bd=1, highlightthickness=0, font=("Consolas", 9),
+            relief=tk.SOLID, bd=1, highlightthickness=0, font=_fmono(9),
         )
         self.entry_sovits_weights.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=1)
         if self.config.get("sovits_weights_path"):
@@ -4065,7 +4113,7 @@ class MainWindow:
         self.btn_browse_sovits = tk.Button(
             sovits_frame, text=" 浏览 ", fg="#8A0303", bg="#0D0000",
             activeforeground="#FF0000", activebackground="#150000",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8),
+            relief=tk.SOLID, bd=1, font=_fcjk(8),
             command=self._browse_sovits_weights,
         )
         self.btn_browse_sovits.pack(side=tk.LEFT, padx=(5, 0))
@@ -4073,7 +4121,7 @@ class MainWindow:
         self.btn_load_sovits = tk.Button(
             sovits_frame, text=" 热加载 ", fg="#2ECC71", bg="#0D0000",
             activeforeground="#2ECC71", activebackground="#051A05",
-            relief=tk.SOLID, bd=1, font=("Microsoft YaHei", 8, "bold"),
+            relief=tk.SOLID, bd=1, font=_fcjk(8, bold=True),
             command=lambda: self._async_load_weights("sovits", self.entry_sovits_weights.get_actual_value()),
         )
         self.btn_load_sovits.pack(side=tk.RIGHT, padx=(5, 0))
@@ -4081,19 +4129,19 @@ class MainWindow:
         # TTS 状态
         self.lbl_tts_status_title = tk.Label(
             self.settings_frame, text="语音状态:", fg="#666666", bg="#000000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_tts_status_title.grid(row=8, column=0, sticky=tk.W, padx=10, pady=2)
         self.lbl_tts_status = tk.Label(
             self.settings_frame, text="准备就绪", fg="#8A0303", bg="#000000",
-            font=("Microsoft YaHei", 9, "bold"),
+            font=_fcjk(9, bold=True),
         )
         self.lbl_tts_status.grid(row=8, column=1, sticky=tk.W, padx=5, pady=2)
 
         # 界面语言选择
         self.lbl_lang_title = tk.Label(
             self.settings_frame, text="界面与Saki语言:", fg="#666666", bg="#000000",
-            font=("Microsoft YaHei", 9),
+            font=_fcjk(9),
         )
         self.lbl_lang_title.grid(row=9, column=0, sticky=tk.W, padx=10, pady=2)
 
@@ -4105,7 +4153,7 @@ class MainWindow:
             rb = tk.Radiobutton(
                 lang_frame, text=lang, variable=self.selected_language, value=lang,
                 bg="#000000", fg="#CC0000", activebackground="#0D0000", activeforeground="#FF0000",
-                selectcolor="#000000", font=("Microsoft YaHei", 9), bd=0, highlightthickness=0,
+                selectcolor="#000000", font=_fcjk(9), bd=0, highlightthickness=0,
                 command=self._on_language_changed,
             )
             rb.pack(side=tk.LEFT, padx=5)
@@ -4125,7 +4173,7 @@ class MainWindow:
             self.bottom_frame, bg="#050000", fg="#FF0000", insertbackground="#FF0000",
             relief=tk.SOLID, bd=1, highlightthickness=1,
             highlightcolor="#8A0303", highlightbackground="#222222",
-            font=("Microsoft YaHei", 11),
+            font=_fcjk(11),
         )
         self.entry_input.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=6, padx=(0, 10))
         self.entry_input.bind("<Return>", lambda e: self._on_send())
@@ -4135,7 +4183,7 @@ class MainWindow:
             self.bottom_frame, text="回应她", fg="#8A0303", bg="#000000",
             activeforeground="#FF0000", activebackground="#150000",
             relief=tk.SOLID, bd=1, highlightthickness=0,
-            font=("Microsoft YaHei", 10, "bold"), width=10,
+            font=_fcjk(10, bold=True), width=10,
             command=self._on_send,
         )
         self.btn_send.pack(side=tk.RIGHT, ipady=4)
@@ -4154,18 +4202,18 @@ class MainWindow:
         self.chat_text = tk.Text(
             self.chat_frame, bg="#000000", fg="#CC0000",
             insertbackground="#FF0000", selectbackground="#3A0000", selectforeground="#FF0000",
-            font=("Microsoft YaHei", 11), wrap=tk.WORD, bd=0, highlightthickness=0,
+            font=_fcjk(11), wrap=tk.WORD, bd=0, highlightthickness=0,
             spacing1=6, spacing2=4, spacing3=6,
         )
         self.chat_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.chat_text.config(state=tk.DISABLED)
 
-        self.chat_text.tag_config("user", foreground="#FF0000", font=("Microsoft YaHei", 11, "bold"))
+        self.chat_text.tag_config("user", foreground="#FF0000", font=_fcjk(11, bold=True))
         self.chat_text.tag_config("saki", foreground="#CC0000")
-        self.chat_text.tag_config("think", foreground="#7D5BA6", font=("Microsoft YaHei", 10, "italic"))
-        self.chat_text.tag_config("system", foreground="#555555", font=("Consolas", 9, "italic"))
-        self.chat_text.tag_config("glitch_large", font=("Microsoft YaHei", 24, "bold"), foreground="#FF0000")
-        self.chat_text.tag_config("glitch_small", font=("Microsoft YaHei", 6), foreground="#550000")
+        self.chat_text.tag_config("think", foreground="#7D5BA6", font=_fcjk(10))
+        self.chat_text.tag_config("system", foreground="#555555", font=_fmono(9))
+        self.chat_text.tag_config("glitch_large", font=_fcjk(24, bold=True), foreground="#FF0000")
+        self.chat_text.tag_config("glitch_small", font=_fcjk(6), foreground="#550000")
 
         self.scrollbar = ttk.Scrollbar(
             self.chat_frame, orient="vertical", command=self.chat_text.yview,
