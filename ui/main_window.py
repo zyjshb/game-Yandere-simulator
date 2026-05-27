@@ -1722,7 +1722,7 @@ class MainWindow:
         intent = classify_player_intent(user_input)
         delta_f, delta_s, delta_e = roll_delta_for_intent(intent)
         bank = MOCK_REPLY_BANK.get(lang, MOCK_REPLY_BANK["中文"])
-        pool = bank.get(intent["name"], bank["default"])
+        pool = bank.get(intent["name"], bank.get("affection", list(bank.values())[0] if bank else []))
         reply = random.choice(pool)
 
         if intent["name"] == "default" and len(user_input) <= 12 and random.random() < 0.35:

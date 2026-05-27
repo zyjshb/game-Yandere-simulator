@@ -155,7 +155,7 @@ def build_role_simulation_prompt(selected_lang, user_lang, current_day, favorabi
         if needs_translation:
             translation_contract = (
                 f"現在、二ヶ国語出力（バイリンガル表示）が必要です：はい。紗希の本文は【{target_lang_name}】を使用し、"
-                f"直後にプレイヤーの入力言語【{user_lang_name}】による翻訳を、全角括弧 `（ ）` に包んで改行して追加してください。翻訳行は必ず JSON の前に配置してください。翻訳行の中に絶対に中国語や三人称紹介文（ナレーション）を混入させてはいけません。"
+                f"直後にプレイヤーの入力言語【{user_lang_name}】による翻訳を、全角括弧 `（ ）` に包んで改行して追加してください。翻訳行は必ず JSON の前に配置してください。翻訳行の中に絶対に三人称の紹介文（ナレーション）などを混入させてはいけません。必ずキャラクターの口調で直接翻訳してください。"
             )
         else:
             translation_contract = "現在、二ヶ国語出力（バイリンガル表示）が必要です：いいえ。プレイヤーの入力言語が紗希の言語と一致しているため、末尾に括弧翻訳を追加しないでください。"
