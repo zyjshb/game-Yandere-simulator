@@ -1533,12 +1533,12 @@ class MainWindow:
             self.entry_refer_wav.delete(0, tk.END)
             saki_wav = self.config.get("refer_wav_path") or ""
             if not saki_wav:
-                saki_wav = "saki_refer.wav"
+                saki_wav = DEFAULT_LANGUAGE_VOICES["中文"]["refer_wav_path"]
             self.entry_refer_wav.insert(0, saki_wav)
             self.entry_refer_wav.config(fg="#FF0000")
             self.refer_wav_path = saki_wav
 
-            saki_prompt = self.config.get("prompt_text") or "你终于醒了，亲爱的..."
+            saki_prompt = self.config.get("prompt_text") or "你要是有什么危险的差事要办，尽管来找我。"
             self.entry_prompt_text.delete(0, tk.END)
             self.entry_prompt_text.insert(0, saki_prompt)
             self.entry_prompt_text.config(fg="#FF0000")
